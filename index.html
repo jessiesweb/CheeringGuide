@@ -1,1070 +1,198 @@
-<!doctype html>
-<html lang="zh-TW">
- <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!DOCTYPE html>
+<html lang="zh-Hant">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>應援練習器</title>
-  <script src="/_sdk/data_sdk.js"></script>
-  <script src="/_sdk/element_sdk.js"></script>
-  <script src="https://www.youtube.com/iframe_api"></script>
-  <style>
-    body {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-      font-family: 'Noto Sans TC', 'Microsoft JhengHei', sans-serif;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      min-height: 100%;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-    }
-    
-    .container {
-      width: 90%;
-      max-width: 900px;
-      background: white;
-      border-radius: 20px;
-      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-      overflow: hidden;
-    }
-    
-    .header {
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      color: white;
-      padding: 30px;
-      text-align: center;
-    }
-    
-    .header h1 {
-      margin: 0 0 20px 0;
-      font-size: 32px;
-      font-weight: 700;
-    }
-    
-    .nav-buttons {
-      display: flex;
-      gap: 15px;
-      justify-content: center;
-    }
-    
-    .nav-btn {
-      background: rgba(255, 255, 255, 0.2);
-      color: white;
-      border: 2px solid white;
-      padding: 12px 30px;
-      border-radius: 25px;
-      cursor: pointer;
-      font-size: 16px;
-      font-weight: 600;
-      transition: all 0.3s;
-    }
-    
-    .nav-btn:hover {
-      background: white;
-      color: #667eea;
-    }
-    
-    .nav-btn.active {
-      background: white;
-      color: #667eea;
-    }
-    
-    .content {
-      padding: 30px;
-    }
-    
-    .page {
-      display: none;
-    }
-    
-    .page.active {
-      display: block;
-    }
-    
-    .song-select {
-      margin-bottom: 20px;
-    }
-    
-    .song-select label {
-      display: block;
-      margin-bottom: 10px;
-      font-weight: 600;
-      color: #333;
-      font-size: 18px;
-    }
-    
-    .song-select select {
-      width: 100%;
-      padding: 12px;
-      border: 2px solid #e0e0e0;
-      border-radius: 10px;
-      font-size: 16px;
-      background: white;
-      cursor: pointer;
-    }
-    
-    .video-container {
-      position: relative;
-      width: 100%;
-      padding-bottom: 56.25%;
-      background: #000;
-      border-radius: 10px;
-      overflow: hidden;
-      margin-bottom: 20px;
-    }
-    
-    .video-container iframe {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-    }
-    
-    .practice-controls {
-      background: #f5f5f5;
-      padding: 20px;
-      border-radius: 10px;
-    }
-    
-    .input-group {
-      margin-bottom: 15px;
-    }
-    
-    .input-group label {
-      display: block;
-      margin-bottom: 8px;
-      font-weight: 600;
-      color: #333;
-    }
-    
-    .input-group input {
-      width: 100%;
-      padding: 12px;
-      border: 2px solid #e0e0e0;
-      border-radius: 8px;
-      font-size: 16px;
-      box-sizing: border-box;
-    }
-    
-    .lyric-buttons-container {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      margin-bottom: 15px;
-    }
-    
-    .lyric-choice-btn {
-      padding: 12px 20px;
-      background: #667eea;
-      color: white;
-      border: none;
-      border-radius: 8px;
-      font-size: 16px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.3s;
-    }
-    
-    .lyric-choice-btn:hover {
-      background: #5568d3;
-      transform: scale(1.05);
-    }
-    
-    .lyric-choice-btn.selected {
-      background: #4ecdc4;
-      transform: scale(1.1);
-    }
-    
-    .action-buttons {
-      display: flex;
-      gap: 10px;
-      flex-wrap: wrap;
-      margin-bottom: 15px;
-    }
-    
-    .action-btn {
-      flex: 1;
-      min-width: 120px;
-      padding: 15px;
-      border: none;
-      border-radius: 10px;
-      font-size: 16px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.3s;
-    }
-    
-    .cheer-btn {
-      background: #ff6b6b;
-      color: white;
-    }
-    
-    .cheer-btn:hover {
-      background: #ee5a52;
-      transform: scale(1.05);
-    }
-    
-    .scream-btn {
-      background: #ffd93d;
-      color: #333;
-    }
-    
-    .scream-btn:hover {
-      background: #f5c518;
-      transform: scale(1.05);
-    }
-    
-    .submit-btn {
-      background: #4ecdc4;
-      color: white;
-    }
-    
-    .submit-btn:hover {
-      background: #45b7af;
-    }
-    
-    .score-display {
-      text-align: center;
-      padding: 20px;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      color: white;
-      border-radius: 10px;
-      margin-bottom: 15px;
-    }
-    
-    .score-display h2 {
-      margin: 0 0 10px 0;
-      font-size: 24px;
-    }
-    
-    .score-display .score {
-      font-size: 48px;
-      font-weight: 700;
-    }
-    
-    .settings-form {
-      background: #f5f5f5;
-      padding: 25px;
-      border-radius: 10px;
-      margin-bottom: 20px;
-    }
-    
-    .form-section {
-      margin-bottom: 30px;
-    }
-    
-    .form-section h3 {
-      margin: 0 0 15px 0;
-      color: #667eea;
-      font-size: 20px;
-    }
-    
-    .form-group {
-      margin-bottom: 15px;
-    }
-    
-    .form-group label {
-      display: block;
-      margin-bottom: 8px;
-      font-weight: 600;
-      color: #333;
-    }
-    
-    .form-group input,
-    .form-group textarea {
-      width: 100%;
-      padding: 12px;
-      border: 2px solid #e0e0e0;
-      border-radius: 8px;
-      font-size: 14px;
-      box-sizing: border-box;
-    }
-    
-    .form-group textarea {
-      min-height: 100px;
-      font-family: 'Courier New', monospace;
-      resize: vertical;
-    }
-    
-    .time-inputs {
-      display: flex;
-      gap: 10px;
-      align-items: center;
-    }
-    
-    .time-inputs input {
-      flex: 1;
-    }
-    
-    .save-btn {
-      width: 100%;
-      padding: 15px;
-      background: #667eea;
-      color: white;
-      border: none;
-      border-radius: 10px;
-      font-size: 18px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.3s;
-    }
-    
-    .save-btn:hover {
-      background: #5568d3;
-    }
-    
-    .save-btn:disabled {
-      background: #ccc;
-      cursor: not-allowed;
-    }
-    
-    .song-list {
-      margin-bottom: 20px;
-    }
-    
-    .song-item {
-      background: white;
-      padding: 15px;
-      border-radius: 10px;
-      margin-bottom: 10px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-    
-    .song-info {
-      flex: 1;
-    }
-    
-    .song-info h4 {
-      margin: 0 0 5px 0;
-      color: #333;
-    }
-    
-    .song-info p {
-      margin: 0;
-      color: #666;
-      font-size: 14px;
-    }
-    
-    .song-actions {
-      display: flex;
-      gap: 10px;
-    }
-    
-    .edit-btn, .delete-btn {
-      padding: 8px 15px;
-      border: none;
-      border-radius: 5px;
-      cursor: pointer;
-      font-size: 14px;
-      font-weight: 600;
-    }
-    
-    .edit-btn {
-      background: #4ecdc4;
-      color: white;
-    }
-    
-    .delete-btn {
-      background: #ff6b6b;
-      color: white;
-    }
-    
-    .feedback {
-      padding: 15px;
-      border-radius: 8px;
-      margin-bottom: 15px;
-      font-weight: 600;
-      text-align: center;
-    }
-    
-    .feedback.success {
-      background: #d4edda;
-      color: #155724;
-    }
-    
-    .feedback.error {
-      background: #f8d7da;
-      color: #721c24;
-    }
-    
-    .empty-state {
-      text-align: center;
-      padding: 40px;
-      color: #999;
-    }
-    
-    .empty-state p {
-      margin: 10px 0;
-      font-size: 16px;
-    }
-    
-    .help-text {
-      font-size: 12px;
-      color: #666;
-      margin-top: 5px;
-    }
-    
-    .limit-warning {
-      background: #fff3cd;
-      color: #856404;
-      padding: 15px;
-      border-radius: 8px;
-      margin-bottom: 15px;
-      text-align: center;
-      font-weight: 600;
-    }
-  </style>
-  <style>@view-transition { navigation: auto; }</style>
-  <script src="https://cdn.tailwindcss.com" type="text/javascript"></script>
- </head>
- <body>
-  <div class="container">
-   <div class="header">
-    <h1 id="app-title">應援練習器</h1>
-    <div class="nav-buttons"><button class="nav-btn active" onclick="showPage('practice')"> <span id="practice-btn-text">開始練習</span> </button> <button class="nav-btn" onclick="showPage('settings')"> <span id="settings-btn-text">設定歌曲</span> </button>
-    </div>
-   </div>
-   <div class="content">
-    <div id="practice-page" class="page active">
-     <div class="song-select"><label for="song-selector">選擇歌曲</label> <select id="song-selector" onchange="loadSong()"> <option value="">請選擇歌曲...</option> </select>
-     </div>
-     <div id="practice-content" style="display: none;">
-      <div class="video-container">
-       <div id="player"></div>
-      </div>
-      <div id="feedback-area"></div>
-      <div class="score-display">
-       <h2>目前分數</h2>
-       <div class="score" id="current-score">
-        0
-       </div>
-      </div>
-      <div class="practice-controls">
-       <div id="lyric-buttons-area"></div>
-       <div class="input-group"><label for="lyric-input">或手動輸入歌詞</label> <input type="text" id="lyric-input" placeholder="在應援時間點輸入歌詞...">
-       </div>
-       <div class="action-buttons"><button class="action-btn cheer-btn" onclick="handleCheer()">應援!</button> <button class="action-btn scream-btn" onclick="handleScream()">尖叫!</button> <button class="action-btn submit-btn" onclick="submitLyric()">提交歌詞</button>
-       </div>
-      </div>
-     </div>
-     <div id="no-song-message" class="empty-state">
-      <p>🎵 還沒有歌曲設定</p>
-      <p>請先到設定頁面新增歌曲</p>
-     </div>
-    </div>
-    <div id="settings-page" class="page">
-     <div id="limit-warning-area"></div>
-     <div class="settings-form">
-      <div class="form-section">
-       <h3>新增/編輯歌曲</h3>
-       <div class="form-group"><label for="song-name">歌曲名稱</label> <input type="text" id="song-name" placeholder="例如: DNA - BTS">
-       </div>
-       <div class="form-group"><label for="practice-video">練習影片 YouTube ID</label> <input type="text" id="practice-video" placeholder="例如: dQw4w9WgXcQ">
-        <div class="help-text">
-         輸入 YouTube 網址中 v= 後面的部分
-        </div>
-       </div>
-       <div class="form-group"><label for="practice-start">練習影片起始時間</label> <input type="text" id="practice-start" placeholder="0:00 或 0">
-        <div class="help-text">
-         可使用「分:秒」或「秒數」格式,例如: 0:30 或 30.5
-        </div>
-       </div>
-       <div class="form-group"><label for="reference-video">參考影片 YouTube ID (選填)</label> <input type="text" id="reference-video" placeholder="例如: dQw4w9WgXcQ">
-       </div>
-       <div class="form-group"><label for="reference-start">參考影片起始時間</label> <input type="text" id="reference-start" placeholder="0:00 或 0">
-        <div class="help-text">
-         可使用「分:秒」或「秒數」格式,例如: 1:05 或 65.5
-        </div>
-       </div>
-       <div class="form-group"><label for="cue-points">應援時間點與歌詞</label> <textarea id="cue-points" placeholder="格式: 開始時間-結束時間:歌詞
-例如:
-0:30-0:35:DNA
-1:00.5-1:05.2:I GOT IT
-30-35:也可用秒數"></textarea>
-        <div class="help-text">
-         每行一個應援點,支援「分:秒」或「秒數」格式,使用參考影片的時間軸
-        </div>
-       </div>
-       <div class="form-group"><label for="lyric-buttons">歌詞按鈕設定 (選填)</label> <textarea id="lyric-buttons" placeholder="輸入所有可能的應援歌詞,每行一個
-例如:
-DNA
-I GOT IT
-LA LA LA"></textarea>
-        <div class="help-text">
-         設定後,練習時會顯示按鈕讓使用者點選,不用手動輸入
-        </div>
-       </div><button class="save-btn" id="save-btn" onclick="saveSong()">儲存歌曲</button>
-      </div>
-     </div>
-     <div class="song-list" id="song-list"></div>
-    </div>
-   </div>
-  </div>
+  <!-- <link rel="stylesheet" href="https://font.emtech.cc/css/emfont-ChickenMcNuggets.css" /> -->
+  <link rel="stylesheet" href="styles.css" />
+</head>
+
+<body class="emfont-jfOpenHuninn">
+  <script src="https://font.emtech.cc/emfont.js"></script>
   <script>
-    let allSongs = [];
-    let currentSong = null;
-    let player = null;
-    let score = 0;
-    let checkInterval = null;
-    let editingId = null;
-    let playerReady = false;
-    let selectedLyric = '';
-
-    const defaultConfig = {
-      app_title: "應援練習器",
-      practice_button_text: "開始練習",
-      settings_button_text: "設定歌曲",
-      background_color: "#667eea",
-      surface_color: "#ffffff",
-      text_color: "#333333",
-      primary_action_color: "#4ecdc4",
-      secondary_action_color: "#ff6b6b",
-      font_family: "Noto Sans TC",
-      font_size: 16
-    };
-
-    const dataHandler = {
-      onDataChanged(data) {
-        allSongs = data;
-        updateSongSelector();
-        updateSongList();
-        updateLimitWarning();
-        
-        if (allSongs.length > 0) {
-          document.getElementById('no-song-message').style.display = 'none';
-        } else {
-          document.getElementById('no-song-message').style.display = 'block';
-          document.getElementById('practice-content').style.display = 'none';
-        }
-      }
-    };
-
-    async function initApp() {
-      const initResult = await window.dataSdk.init(dataHandler);
-      if (!initResult.isOk) {
-        console.error("Failed to initialize data SDK");
-        return;
-      }
-
-      if (window.elementSdk) {
-        window.elementSdk.init({
-          defaultConfig,
-          onConfigChange: async (config) => {
-            const customFont = config.font_family || defaultConfig.font_family;
-            const baseSize = config.font_size || defaultConfig.font_size;
-            const baseFontStack = 'Microsoft JhengHei, sans-serif';
-            
-            document.getElementById('app-title').textContent = config.app_title || defaultConfig.app_title;
-            document.getElementById('practice-btn-text').textContent = config.practice_button_text || defaultConfig.practice_button_text;
-            document.getElementById('settings-btn-text').textContent = config.settings_button_text || defaultConfig.settings_button_text;
-            
-            document.body.style.fontFamily = `${customFont}, ${baseFontStack}`;
-            document.body.style.fontSize = `${baseSize}px`;
-            
-            const headers = document.querySelectorAll('h1, h2, h3, h4');
-            headers.forEach(h => {
-              h.style.fontFamily = `${customFont}, ${baseFontStack}`;
-            });
-            
-            document.querySelector('h1').style.fontSize = `${baseSize * 2}px`;
-            document.querySelectorAll('h2').forEach(h => h.style.fontSize = `${baseSize * 1.5}px`);
-            document.querySelectorAll('h3').forEach(h => h.style.fontSize = `${baseSize * 1.25}px`);
-            document.querySelectorAll('h4').forEach(h => h.style.fontSize = `${baseSize * 1.1}px`);
-            
-            const bgColor = config.background_color || defaultConfig.background_color;
-            const surfaceColor = config.surface_color || defaultConfig.surface_color;
-            const textColor = config.text_color || defaultConfig.text_color;
-            const primaryColor = config.primary_action_color || defaultConfig.primary_action_color;
-            const secondaryColor = config.secondary_action_color || defaultConfig.secondary_action_color;
-            
-            document.body.style.background = `linear-gradient(135deg, ${bgColor} 0%, #764ba2 100%)`;
-            document.querySelector('.header').style.background = `linear-gradient(135deg, ${bgColor} 0%, #764ba2 100%)`;
-            document.querySelector('.container').style.background = surfaceColor;
-            document.querySelectorAll('.song-item').forEach(item => item.style.background = surfaceColor);
-            
-            document.querySelectorAll('label, .song-info h4, .form-section h3').forEach(el => {
-              el.style.color = textColor;
-            });
-            
-            document.querySelectorAll('.submit-btn, .edit-btn').forEach(btn => {
-              btn.style.background = primaryColor;
-            });
-            
-            document.querySelectorAll('.cheer-btn, .delete-btn').forEach(btn => {
-              btn.style.background = secondaryColor;
-            });
-            
-            document.querySelector('.save-btn').style.background = bgColor;
-            document.querySelectorAll('.lyric-choice-btn').forEach(btn => {
-              btn.style.background = bgColor;
-            });
-          },
-          mapToCapabilities: (config) => ({
-            recolorables: [
-              {
-                get: () => config.background_color || defaultConfig.background_color,
-                set: (value) => {
-                  if (window.elementSdk) {
-                    window.elementSdk.setConfig({ background_color: value });
-                  }
-                }
-              },
-              {
-                get: () => config.surface_color || defaultConfig.surface_color,
-                set: (value) => {
-                  if (window.elementSdk) {
-                    window.elementSdk.setConfig({ surface_color: value });
-                  }
-                }
-              },
-              {
-                get: () => config.text_color || defaultConfig.text_color,
-                set: (value) => {
-                  if (window.elementSdk) {
-                    window.elementSdk.setConfig({ text_color: value });
-                  }
-                }
-              },
-              {
-                get: () => config.primary_action_color || defaultConfig.primary_action_color,
-                set: (value) => {
-                  if (window.elementSdk) {
-                    window.elementSdk.setConfig({ primary_action_color: value });
-                  }
-                }
-              },
-              {
-                get: () => config.secondary_action_color || defaultConfig.secondary_action_color,
-                set: (value) => {
-                  if (window.elementSdk) {
-                    window.elementSdk.setConfig({ secondary_action_color: value });
-                  }
-                }
-              }
-            ],
-            borderables: [],
-            fontEditable: {
-              get: () => config.font_family || defaultConfig.font_family,
-              set: (value) => {
-                if (window.elementSdk) {
-                  window.elementSdk.setConfig({ font_family: value });
-                }
-              }
-            },
-            fontSizeable: {
-              get: () => config.font_size || defaultConfig.font_size,
-              set: (value) => {
-                if (window.elementSdk) {
-                  window.elementSdk.setConfig({ font_size: value });
-                }
-              }
-            }
-          }),
-          mapToEditPanelValues: (config) => new Map([
-            ["app_title", config.app_title || defaultConfig.app_title],
-            ["practice_button_text", config.practice_button_text || defaultConfig.practice_button_text],
-            ["settings_button_text", config.settings_button_text || defaultConfig.settings_button_text]
-          ])
-        });
-      }
-    }
-
-    function onYouTubeIframeAPIReady() {
-      playerReady = true;
-    }
-
-    function showPage(page) {
-      document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-      document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active'));
-      
-      document.getElementById(page + '-page').classList.add('active');
-      event.target.closest('.nav-btn').classList.add('active');
-      
-      if (page === 'practice' && currentSong && player) {
-        startPractice();
-      }
-    }
-
-    function updateSongSelector() {
-      const selector = document.getElementById('song-selector');
-      const currentValue = selector.value;
-      
-      selector.innerHTML = '<option value="">請選擇歌曲...</option>';
-      
-      allSongs.forEach(song => {
-        const option = document.createElement('option');
-        option.value = song.__backendId;
-        option.textContent = song.song_name;
-        selector.appendChild(option);
-      });
-      
-      if (currentValue) {
-        selector.value = currentValue;
-      }
-    }
-
-    function updateSongList() {
-      const list = document.getElementById('song-list');
-      
-      if (allSongs.length === 0) {
-        list.innerHTML = '<div class="empty-state"><p>還沒有儲存的歌曲</p></div>';
-        return;
-      }
-      
-      list.innerHTML = '';
-      
-      allSongs.forEach(song => {
-        const item = document.createElement('div');
-        item.className = 'song-item';
-        
-        const cueCount = song.cue_points ? song.cue_points.split('\n').filter(line => line.trim()).length : 0;
-        const buttonCount = song.lyric_buttons ? song.lyric_buttons.split('\n').filter(line => line.trim()).length : 0;
-        
-        item.innerHTML = `
-          <div class="song-info">
-            <h4>${song.song_name}</h4>
-            <p>應援點數: ${cueCount} 個 ${buttonCount > 0 ? '| 歌詞按鈕: ' + buttonCount + ' 個' : ''}</p>
-          </div>
-          <div class="song-actions">
-            <button class="edit-btn" onclick="editSong('${song.__backendId}')">編輯</button>
-            <button class="delete-btn" onclick="deleteSong('${song.__backendId}')">刪除</button>
-          </div>
-        `;
-        
-        list.appendChild(item);
-      });
-    }
-
-    function updateLimitWarning() {
-      const warningArea = document.getElementById('limit-warning-area');
-      
-      if (allSongs.length >= 999) {
-        warningArea.innerHTML = '<div class="limit-warning">⚠️ 已達到最大歌曲數量限制 (999首),請刪除部分歌曲後再新增</div>';
-      } else {
-        warningArea.innerHTML = '';
-      }
-    }
-
-    async function saveSong() {
-      if (allSongs.length >= 999 && !editingId) {
-        showFeedback('已達到最大歌曲數量限制 (999首),請先刪除部分歌曲', 'error');
-        return;
-      }
-      
-      const songName = document.getElementById('song-name').value.trim();
-      const practiceVideo = document.getElementById('practice-video').value.trim();
-      const practiceStartInput = document.getElementById('practice-start').value.trim();
-      const practiceStart = parseTimeToSeconds(practiceStartInput || '0');
-      const referenceVideo = document.getElementById('reference-video').value.trim();
-      const referenceStartInput = document.getElementById('reference-start').value.trim();
-      const referenceStart = parseTimeToSeconds(referenceStartInput || '0');
-      const cuePoints = document.getElementById('cue-points').value.trim();
-      const lyricButtons = document.getElementById('lyric-buttons').value.trim();
-      
-      if (!songName || !practiceVideo) {
-        showFeedback('請填寫歌曲名稱和練習影片', 'error');
-        return;
-      }
-      
-      const saveBtn = document.getElementById('save-btn');
-      saveBtn.disabled = true;
-      saveBtn.textContent = '儲存中...';
-      
-      const songData = {
-        song_name: songName,
-        practice_video_url: practiceVideo,
-        reference_video_url: referenceVideo,
-        practice_start_time: practiceStart,
-        reference_start_time: referenceStart,
-        cue_points: cuePoints,
-        lyric_buttons: lyricButtons
-      };
-      
-      let result;
-      if (editingId) {
-        const existingSong = allSongs.find(s => s.__backendId === editingId);
-        result = await window.dataSdk.update({ ...existingSong, ...songData });
-      } else {
-        result = await window.dataSdk.create({
-          id: Date.now().toString(),
-          ...songData
-        });
-      }
-      
-      saveBtn.disabled = false;
-      saveBtn.textContent = '儲存歌曲';
-      
-      if (result.isOk) {
-        showFeedback(editingId ? '歌曲更新成功!' : '歌曲儲存成功!', 'success');
-        clearForm();
-        editingId = null;
-      } else {
-        showFeedback('儲存失敗,請重試', 'error');
-      }
-    }
-
-    function editSong(id) {
-      const song = allSongs.find(s => s.__backendId === id);
-      if (!song) return;
-      
-      editingId = id;
-      
-      document.getElementById('song-name').value = song.song_name;
-      document.getElementById('practice-video').value = song.practice_video_url;
-      document.getElementById('practice-start').value = song.practice_start_time;
-      document.getElementById('reference-video').value = song.reference_video_url;
-      document.getElementById('reference-start').value = song.reference_start_time;
-      document.getElementById('cue-points').value = song.cue_points;
-      document.getElementById('lyric-buttons').value = song.lyric_buttons || '';
-      
-      document.getElementById('save-btn').textContent = '更新歌曲';
-      
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    }
-
-    async function deleteSong(id) {
-      const song = allSongs.find(s => s.__backendId === id);
-      if (!song) return;
-      
-      const deleteBtn = event.target;
-      const originalText = deleteBtn.textContent;
-      
-      if (deleteBtn.textContent !== '確認刪除?') {
-        deleteBtn.textContent = '確認刪除?';
-        deleteBtn.style.background = '#c82333';
-        
-        setTimeout(() => {
-          deleteBtn.textContent = originalText;
-          deleteBtn.style.background = '';
-        }, 3000);
-        return;
-      }
-      
-      deleteBtn.disabled = true;
-      deleteBtn.textContent = '刪除中...';
-      
-      const result = await window.dataSdk.delete(song);
-      
-      if (result.isOk) {
-        showFeedback('歌曲刪除成功!', 'success');
-        if (currentSong && currentSong.__backendId === id) {
-          currentSong = null;
-          document.getElementById('song-selector').value = '';
-          document.getElementById('practice-content').style.display = 'none';
-        }
-      } else {
-        showFeedback('刪除失敗,請重試', 'error');
-        deleteBtn.disabled = false;
-        deleteBtn.textContent = originalText;
-      }
-    }
-
-    function clearForm() {
-      document.getElementById('song-name').value = '';
-      document.getElementById('practice-video').value = '';
-      document.getElementById('practice-start').value = '0';
-      document.getElementById('reference-video').value = '';
-      document.getElementById('reference-start').value = '0';
-      document.getElementById('cue-points').value = '';
-      document.getElementById('lyric-buttons').value = '';
-      document.getElementById('save-btn').textContent = '儲存歌曲';
-      editingId = null;
-    }
-
-    function showFeedback(message, type) {
-      const area = document.getElementById('feedback-area');
-      area.innerHTML = `<div class="feedback ${type}">${message}</div>`;
-      
-      setTimeout(() => {
-        area.innerHTML = '';
-      }, 3000);
-    }
-
-    function loadSong() {
-      const songId = document.getElementById('song-selector').value;
-      if (!songId) {
-        document.getElementById('practice-content').style.display = 'none';
-        return;
-      }
-      
-      currentSong = allSongs.find(s => s.__backendId === songId);
-      if (!currentSong) return;
-      
-      document.getElementById('practice-content').style.display = 'block';
-      score = 0;
-      document.getElementById('current-score').textContent = score;
-      document.getElementById('lyric-input').value = '';
-      selectedLyric = '';
-      
-      // 顯示歌詞按鈕
-      renderLyricButtons();
-      
-      if (player) {
-        player.destroy();
-      }
-      
-      if (playerReady) {
-        player = new YT.Player('player', {
-          videoId: currentSong.practice_video_url,
-          playerVars: {
-            start: Math.floor(currentSong.practice_start_time || 0),
-            autoplay: 0
-          },
-          events: {
-            onReady: () => {
-              startPractice();
-            }
-          }
-        });
-      }
-    }
-
-    function renderLyricButtons() {
-      const area = document.getElementById('lyric-buttons-area');
-      
-      if (!currentSong.lyric_buttons || !currentSong.lyric_buttons.trim()) {
-        area.innerHTML = '';
-        return;
-      }
-      
-      const lyrics = currentSong.lyric_buttons.split('\n').filter(line => line.trim());
-      
-      if (lyrics.length === 0) {
-        area.innerHTML = '';
-        return;
-      }
-      
-      area.innerHTML = '<div class="lyric-buttons-container" id="lyric-buttons-container"></div>';
-      const container = document.getElementById('lyric-buttons-container');
-      
-      lyrics.forEach(lyric => {
-        const btn = document.createElement('button');
-        btn.className = 'lyric-choice-btn';
-        btn.textContent = lyric.trim();
-        btn.onclick = () => selectLyric(lyric.trim(), btn);
-        container.appendChild(btn);
-      });
-    }
-
-    function selectLyric(lyric, button) {
-      // 清除其他按鈕的選中狀態
-      document.querySelectorAll('.lyric-choice-btn').forEach(btn => {
-        btn.classList.remove('selected');
-      });
-      
-      // 標記選中的按鈕
-      button.classList.add('selected');
-      selectedLyric = lyric;
-      
-      // 同時更新輸入框
-      document.getElementById('lyric-input').value = lyric;
-    }
-
-    function startPractice() {
-      if (checkInterval) {
-        clearInterval(checkInterval);
-      }
-      
-      checkInterval = setInterval(checkCuePoints, 50);
-    }
-
-    function parseTimeToSeconds(timeStr) {
-      // 支援 "分:秒" 格式 (例如: 0:30, 1:05.5) 或純秒數 (例如: 30, 30.5)
-      if (timeStr.includes(':')) {
-        const parts = timeStr.split(':');
-        const minutes = parseInt(parts[0]) || 0;
-        const seconds = parseFloat(parts[1]) || 0;
-        return minutes * 60 + seconds;
-      }
-      return parseFloat(timeStr) || 0;
-    }
-
-    function checkCuePoints() {
-      if (!player || !currentSong || !player.getCurrentTime) return;
-      
-      const currentTime = player.getCurrentTime();
-      const timeDiff = (currentSong.reference_start_time || 0) - (currentSong.practice_start_time || 0);
-      const adjustedTime = currentTime + timeDiff;
-      
-      const cueLines = currentSong.cue_points.split('\n').filter(line => line.trim());
-      
-      cueLines.forEach(line => {
-        const match = line.match(/(.+?)-(.+?):(.+)/);
-        if (!match) return;
-        
-        const start = parseTimeToSeconds(match[1].trim());
-        const end = parseTimeToSeconds(match[2].trim());
-        
-        if (adjustedTime >= start && adjustedTime <= end) {
-          document.getElementById('lyric-input').focus();
-        }
-      });
-    }
-
-    function submitLyric() {
-      if (!player || !currentSong) return;
-      
-      const input = document.getElementById('lyric-input').value.trim() || selectedLyric;
-      if (!input) {
-        showFeedback('請選擇或輸入歌詞', 'error');
-        return;
-      }
-      
-      const currentTime = player.getCurrentTime();
-      const timeDiff = (currentSong.reference_start_time || 0) - (currentSong.practice_start_time || 0);
-      const adjustedTime = currentTime + timeDiff;
-      
-      const cueLines = currentSong.cue_points.split('\n').filter(line => line.trim());
-      
-      let matched = false;
-      
-      cueLines.forEach(line => {
-        const match = line.match(/(.+?)-(.+?):(.+)/);
-        if (!match) return;
-        
-        const start = parseTimeToSeconds(match[1].trim());
-        const end = parseTimeToSeconds(match[2].trim());
-        const lyric = match[3].trim();
-        
-        if (adjustedTime >= start && adjustedTime <= end) {
-          if (input.toLowerCase() === lyric.toLowerCase()) {
-            score += 10;
-            document.getElementById('current-score').textContent = score;
-            showFeedback('✅ 正確! +10分', 'success');
-            matched = true;
-          } else {
-            showFeedback('❌ 不正確,再試試看!', 'error');
-            matched = true;
-          }
-        }
-      });
-      
-      if (!matched) {
-        showFeedback('⏰ 現在不是應援時間', 'error');
-      }
-      
-      document.getElementById('lyric-input').value = '';
-      selectedLyric = '';
-      document.querySelectorAll('.lyric-choice-btn').forEach(btn => {
-        btn.classList.remove('selected');
-      });
-    }
-
-    function handleCheer() {
-      if (!player) return;
-      showFeedback('🎉 應援!', 'success');
-    }
-
-    function handleScream() {
-      if (!player) return;
-      showFeedback('😱 尖叫!!!', 'success');
-    }
-
-    initApp();
+    emfont.init();
   </script>
- <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9a0589096522a9cb',t:'MTc2MzQ0ODY0NC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+  <header>
+    <h1>應援練習器</h1>
+  </header>
+
+  <main>
+    <section id="practice-view" class="view"></section>
+    <section id="settings-view" class="view"></section>
+  </main>
+
+  <template id="settings-template">
+    <div class="settings-grid">
+      <form id="song-form" class="card">
+        <h2>歌曲資訊</h2>
+        <label>歌手 / 團體 <input name="artist" required /></label>
+        <label>歌曲名稱 <input name="title" required /></label>
+        <label>應援影片連結 <input name="cheerVideo" placeholder="https://www.youtube.com/watch?v=..." /></label>
+        <label>應援影片起始時間 <input name="cheerStart" placeholder="0:00" /></label>
+        <label>練習影片連結 <input name="plainVideo" placeholder="https://www.youtube.com/watch?v=..." required /></label>
+        <label>練習影片起始時間 <input name="plainStart" placeholder="0:00" value="0:00" /></label>
+
+        <div class="list-editor" data-list="segments">
+          <div class="list-header">
+            <h3>應援時間段</h3>
+          </div>
+          <div class="bulk-field">
+            <textarea id="segments-raw" placeholder="0:13-0:15 TWICE&#10;0:15-0:18 歡呼,尖叫"></textarea>
+            <small>格式：0:00-0:00 應援句，每行一筆</small>
+          </div>
+          <ul id="segments-list" class="hidden"></ul>
+        </div>
+
+        <div class="list-editor" data-list="hints">
+          <div class="list-header">
+            <h3>應援提示</h3>
+          </div>
+          <div class="bulk-field">
+            <textarea id="hints-raw" placeholder="TWICE&#10;歡呼,尖叫&#10;nature made me"></textarea>
+            <small>每行一筆；同一行可用逗號分隔多個提示</small>
+          </div>
+          <ul id="hints-list" class="hidden"></ul>
+        </div>
+
+        <div class="form-actions">
+          <button type="submit">儲存歌曲</button>
+          <button type="button" id="delete-song" class="danger">刪除歌曲</button>
+        </div>
+      </form>
+
+      <aside class="card" id="song-list">
+        <div class="list-header">
+          <h2>已儲存歌曲</h2>
+          <button type="button" id="refresh-songs" class="ghost">重新整理</button>
+        </div>
+        <ul></ul>
+      </aside>
+    </div>
+  </template>
+
+  <template id="practice-template">
+    <section class="practice-layout">
+      <div class="card">
+        <h2>挑戰資訊</h2>
+        <div id="challenge-form">
+          <label>挑戰者名稱 <input id="challenger-name" placeholder="輸入名稱" /></label>
+          <label>選擇歌曲
+            <select id="practice-song"></select>
+          </label>
+          <button id="start-practice" disabled>開始練習</button>
+        </div>
+        <div class="info-note">
+          <strong>說明：</strong>
+          <p>
+            應援文字可填入空耳，TWICE應援曲目的段落、應援文字、空耳以「THIS IS FOR TW 應援團隊」於 YouTube 發表的
+            <a href="https://www.youtube.com/watch?v=yZMmpkZVdug" target="_blank" rel="noopener noreferrer">TWICE THIS IS FOR 應援空耳合集</a>
+            為主。
+          </p>
+        </div>
+        <div id="challenge-summary" class="hidden">
+          <p><strong>挑戰者：</strong><span id="summary-name">--</span></p>
+          <p><strong>歌曲：</strong><span id="summary-song">--</span></p>
+        </div>
+      </div>
+
+      <div class="card video-panel">
+        <h2 id="practice-title">尚未選擇歌曲</h2>
+        <div id="video-container" class="video-frame"></div>
+      </div>
+
+      <div class="practice-panel" id="practice-card">
+        <h2>應援操作</h2>
+        <div class="video-note muted">音樂播放到<span> 應援段落 </span>時請按下「應援」或「空白鍵」並填入應援歌詞</div>
+        <div class="cheer-controls" id="cheer-controls">
+          <button id="cheer-button" class="circle" disabled>\ 應援 /</button>
+          <div id="cheer-extra" class="cheer-extra hidden">
+            <div id="cheer-history" class="cheer-history"></div>
+            <div class="cheer-entry" id="cheer-entry">
+              <div class="cheer-input-row">
+                <span id="cheer-timestamp">0:00</span>
+                <div class="cheer-input-shell">
+                  <input id="cheer-input" placeholder="輸入應援句 (標點以空白、大小寫不分)" disabled />
+                  <div class="hint-panel">
+                    <div id="hint-suggestions" class="hint-list hidden"></div>
+                  </div>
+                  <div class="cheer-input-actions">
+                    <button id="commit-cheer" type="button" class="ghost" disabled>送出</button>
+                    <button id="cancel-cheer" type="button" class="ghost secondary" disabled>取消</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <button id="submit-practice" disabled>送出結果</button>
+        </div>
+      </div>
+
+      <div class="card hidden" id="scoreboard">
+        <h2>結果</h2>
+        <div id="practice-result" class="muted">尚未練習</div>
+        <div id="result-details" class="result-details hidden"></div>
+      </div>
+
+      <div class="card hidden" id="ranking-card">
+        <h2>排行</h2>
+        <div class="ranking-header">
+          <span>排名</span>
+          <span>挑戰者</span>
+          <span>正確率</span>
+        </div>
+        <div id="ranking-list" class="ranking-list"></div>
+      </div>
+    </section>
+  </template>
+
+  <script src="https://www.youtube.com/iframe_api"></script>
+  <script src="app.js" type="module"></script>
+</body>
+
 </html>
+
+  <div id="guide-modal" class="modal-overlay hidden">
+    <div class="modal-box">
+      <div id="guide-instructions">
+        <h2>應援操作說明</h2>
+        <div class="cheer-demo modal-demo">
+          <button type="button" class="circle demo" disabled aria-label="應援按鈕示意">\ 應援 /</button>
+          <span>應援按鈕示意</span>
+        </div>
+        <ol>
+          <li>音樂播放到<span> 應援段落 </span>時，請按下「應援」或「空白鍵」並填入應援歌詞。</li>
+        </ol>
+        <div class="modal-actions">
+          <button id="guide-confirm">我知道了</button>
+        </div>
+      </div>
+      <div id="guide-countdown" class="hidden">
+        <p>準備開始，倒數中…</p>
+        <div class="countdown-number" id="countdown-number">3</div>
+      </div>
+    </div>
+  </div>
+
+  <div id="confirm-modal" class="modal-overlay hidden">
+    <div class="modal-box small">
+      <h2>提早結束應援？</h2>
+      <p id="confirm-message">影片還沒結束，你確定要結束應援嗎？</p>
+      <div class="modal-actions">
+        <button id="confirm-cancel" class="ghost secondary">再多等一下</button>
+        <button id="confirm-ok" class="danger">結束應援</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="name-warning-modal" class="modal-overlay hidden">
+    <div class="modal-box small">
+      <h2>名稱提醒</h2>
+      <p>挑戰者名稱包含可能不適合的字詞，請重新輸入。</p>
+      <div class="modal-actions">
+        <button id="name-warning-ok">重新輸入</button>
+      </div>
+    </div>
+  </div>

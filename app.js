@@ -395,6 +395,13 @@ class YouTubeDriver {
     this.stateChangeHandler = (event) => this.handlePlayerStateChange(event);
     this.lastStart = 0;
     this.stateListeners = new Set();
+    this.pendingReadyVideoId = null;
+    this.videoReady = true;
+    this.videoReadyPromise = Promise.resolve();
+    this.videoReadyResolver = null;
+    this.videoReadyTimer = null;
+    this.videoReadyGeneration = 0;
+    this.currentReadyToken = 0;
     this.readyPromise = new Promise((resolve) => {
       if (window.YT && window.YT.Player) {
         resolve();
@@ -415,9 +422,12 @@ class YouTubeDriver {
 
   async load(url, startSeconds = 0, { autoplay = true } = {}) {
     const videoId = extractVideoId(url);
+    const readyPromise = this.prepareVideoReady(videoId);
     if (!videoId) {
       this.container.innerHTML = '<p class="muted">無法解析影片連結</p>';
       this.player = null;
+      this.markVideoReady(null, this.currentReadyToken);
+      await readyPromise;
       return;
     }
     await this.readyPromise;
@@ -431,6 +441,7 @@ class YouTubeDriver {
         this.player.loadVideoById(payload);
         if (!autoplay) this.player.pauseVideo?.();
       }
+      await readyPromise;
       return;
     }
     this.ensurePlayerNode();
@@ -457,12 +468,14 @@ class YouTubeDriver {
               event.target.pauseVideo();
               event.target.seekTo(start, true);
             }
+            this.markVideoReady(videoId, this.currentReadyToken);
             resolve();
           },
           onStateChange: this.stateChangeHandler
         }
       });
     });
+    await readyPromise;
   }
 
   getCurrentTime() {
@@ -492,13 +505,62 @@ class YouTubeDriver {
     }
   }
 
+  seekTo(seconds = 0) {
+    if (this.player && typeof this.player.seekTo === 'function') {
+      const value = Math.max(0, Number(seconds) || 0);
+      this.player.seekTo(value, true);
+    }
+  }
+
+  prepareVideoReady(videoId = null) {
+    this.videoReadyGeneration += 1;
+    const token = this.videoReadyGeneration;
+    this.currentReadyToken = token;
+    this.pendingReadyVideoId = videoId || null;
+    this.videoReady = false;
+    this.videoReadyPromise = new Promise((resolve) => {
+      this.videoReadyResolver = resolve;
+    });
+    if (this.videoReadyTimer) {
+      clearTimeout(this.videoReadyTimer);
+    }
+    this.videoReadyTimer = setTimeout(() => this.markVideoReady(null, token), 8000);
+    return this.videoReadyPromise;
+  }
+
+  markVideoReady(videoId = null, token = null) {
+    if (this.videoReady) return;
+    if (token && token !== this.currentReadyToken) return;
+    if (this.pendingReadyVideoId && videoId && videoId !== this.pendingReadyVideoId) {
+      return;
+    }
+    this.videoReady = true;
+    this.pendingReadyVideoId = null;
+    if (this.videoReadyTimer) {
+      clearTimeout(this.videoReadyTimer);
+      this.videoReadyTimer = null;
+    }
+    if (this.videoReadyResolver) {
+      this.videoReadyResolver();
+      this.videoReadyResolver = null;
+    }
+  }
+
   handlePlayerStateChange(event) {
     const PlayerState = window.YT?.PlayerState;
     if (!PlayerState) return;
+    const currentVideoId = event?.target?.getVideoData?.()?.video_id || null;
     if (event.data === PlayerState.ENDED) {
       const resetTime = Number.isFinite(this.lastStart) ? this.lastStart : 0;
       event.target.seekTo(resetTime, true);
       event.target.pauseVideo();
+    }
+    if (
+      event.data === PlayerState.CUED ||
+      event.data === PlayerState.PLAYING ||
+      event.data === PlayerState.PAUSED
+    ) {
+      this.markVideoReady(currentVideoId, this.currentReadyToken);
     }
     this.stateListeners.forEach((listener) => {
       try {
@@ -542,14 +604,13 @@ class PracticeController {
     this.guideInstructions = document.getElementById('guide-instructions');
     this.guideCountdown = document.getElementById('guide-countdown');
     this.countdownNumberEl = document.getElementById('countdown-number');
+    this.mobileCountdownBtn = document.getElementById('mobile-countdown-btn');
     this.confirmModal = document.getElementById('confirm-modal');
     this.confirmMessageEl = document.getElementById('confirm-message');
     this.confirmOkBtn = document.getElementById('confirm-ok');
     this.confirmCancelBtn = document.getElementById('confirm-cancel');
     this.nameWarningModal = document.getElementById('name-warning-modal');
     this.nameWarningOkBtn = document.getElementById('name-warning-ok');
-    this.mobilePlayModal = document.getElementById('mobile-play-modal');
-    this.mobilePlayBtn = document.getElementById('mobile-play-ok');
     this.submitBtn = root.querySelector('#submit-practice');
     this.resultEl = root.querySelector('#practice-result');
     this.resultDetails = root.querySelector('#result-details');
@@ -561,13 +622,11 @@ class PracticeController {
     this.pendingTime = null;
     this.currentHints = [];
     this.countdownTimer = null;
-    this.pendingVideo = null;
     this.activeHintIndex = -1;
     this.videoEnded = false;
     this.confirmResolver = null;
     this.rankings = [];
-    this.mobilePlayGranted = !isMobileDevice();
-    this.pendingMobileStart = null;
+    this.sessionStartSeconds = 0;
 
     this.populateSongs();
     this.renderRanking();
@@ -595,6 +654,7 @@ class PracticeController {
 
   bindEvents() {
     this.startButton.addEventListener('click', () => this.startPractice());
+    this.songSelect.addEventListener('change', () => this.handleSongSelectionChange());
     this.cheerButton.addEventListener('click', () => this.armCheerInput());
     this.submitBtn.addEventListener('click', () => this.finishPractice());
     this.cheerInput.addEventListener('keydown', (event) => this.handleCheerKeyDown(event));
@@ -614,7 +674,7 @@ class PracticeController {
     this.confirmOkBtn?.addEventListener('click', () => this.resolveConfirmDialog(true));
     this.confirmCancelBtn?.addEventListener('click', () => this.handleCancelResult());
     this.nameWarningOkBtn?.addEventListener('click', () => this.hideNameWarning());
-    this.mobilePlayBtn?.addEventListener('click', () => this.handleMobilePlayConfirm());
+    this.mobileCountdownBtn?.addEventListener('click', () => this.handleMobileCountdownStart());
   }
 
   bindShortcuts() {
@@ -637,6 +697,43 @@ class PracticeController {
   handleChallengerInput() {
     const hasName = Boolean(this.challengerInput.value.trim());
     this.startButton.disabled = !hasName;
+  }
+
+  async cuePracticeVideo(song, { showLoading = false } = {}) {
+    if (!song) return;
+    const startSeconds = parseTime(song.plainStart);
+    if (showLoading) setLoading(true, '影片準備中...');
+    try {
+      await this.player.load(song.plainVideo, startSeconds, { autoplay: false });
+      this.player.pause();
+      this.player.seekTo(startSeconds);
+      this.sessionStartSeconds = startSeconds;
+    } catch (err) {
+      console.error('影片載入失敗', err);
+      toast('影片載入失敗', 'error');
+      throw err;
+    } finally {
+      if (showLoading) setLoading(false);
+    }
+  }
+
+  async handleSongSelectionChange() {
+    if (!this.songSelect) return;
+    const songId = this.songSelect.value;
+    const song = SongStore.findSong(songId);
+    if (!song) {
+      this.titleEl.textContent = '尚未選擇歌曲';
+      this.player.stop();
+      return;
+    }
+    if (!this.practiceLayout?.classList.contains('active-phase')) {
+      this.titleEl.textContent = `${song.artist} - ${song.title}`;
+    }
+    try {
+      await this.cuePracticeVideo(song);
+    } catch {
+      /* already toasted */
+    }
   }
 
   handleCheerKeyDown(event) {
@@ -742,10 +839,16 @@ class PracticeController {
   }
 
   async beginVideoPlayback({ autoplay = false } = {}) {
-    if (!this.pendingVideo) return;
-    const { url, start } = this.pendingVideo;
-    await this.player.load(url, start, { autoplay });
-    this.pendingVideo = null;
+    if (!this.session) return;
+    const startSeconds = typeof this.sessionStartSeconds === 'number'
+      ? this.sessionStartSeconds
+      : parseTime(this.session.song?.plainStart || '0:00');
+    this.player.seekTo(startSeconds);
+    if (autoplay) {
+      this.player.play();
+    } else {
+      this.player.pause();
+    }
   }
 
   showChallengeSummary(name, song) {
@@ -756,8 +859,28 @@ class PracticeController {
     this.root.querySelector('.practice-layout')?.classList.add('active-phase');
   }
 
+  async launchGuideSequence(guideSeen) {
+    if (!this.guideModal) {
+      try {
+        await this.beginVideoPlayback({ autoplay: true });
+      } catch (err) {
+        console.error('載入影片失敗', err);
+        toast('載入影片失敗', 'error');
+      }
+      this.enablePracticeControls();
+      return;
+    }
+    if (!guideSeen) {
+      this.openGuide();
+    } else {
+      this.startCountdown();
+    }
+  }
+
   openGuide() {
     if (!this.guideModal) return;
+    this.player.pause();
+    this.guideConfirmBtn?.classList.remove('hidden');
     if (this.guideInstructions) this.guideInstructions.classList.remove('hidden');
     if (this.guideCountdown) this.guideCountdown.classList.add('hidden');
     this.guideModal.classList.remove('hidden');
@@ -779,6 +902,12 @@ class PracticeController {
 
   startCountdown() {
     if (!this.guideModal) return;
+    this.player.pause();
+    if (requiresManualPlayback()) {
+      this.showMobileCountdown();
+      return;
+    }
+    this.hideMobileCountdown();
     if (this.guideInstructions) this.guideInstructions.classList.add('hidden');
     if (this.guideCountdown) this.guideCountdown.classList.remove('hidden');
     this.guideModal.classList.remove('hidden');
@@ -879,22 +1008,11 @@ class PracticeController {
       return;
     }
     const songId = this.songSelect.value;
-    if (!SongStore.findSong(songId)) {
+    const song = SongStore.findSong(songId);
+    if (!song) {
       toast('請選擇歌曲', 'error');
       return;
     }
-    const params = { challengerName, songId };
-    if (isMobileDevice() && !this.mobilePlayGranted) {
-      this.pendingMobileStart = params;
-      this.showMobilePlayModal();
-      return;
-    }
-    await this.initializePractice(params);
-  }
-
-  async initializePractice({ challengerName, songId }) {
-    const song = SongStore.findSong(songId);
-    if (!song) return;
     this.practiceLayout?.classList.add('active-phase');
     this.practiceLayout?.classList.remove('show-results');
     if (this.resultDetails) {
@@ -905,11 +1023,15 @@ class PracticeController {
     const practiceSong = { ...song, segments: alignSongSegments(song) };
     this.session = new PracticeSession(practiceSong, challengerName);
     this.titleEl.textContent = `${practiceSong.artist} - ${practiceSong.title}`;
-    this.player.stop();
-    this.pendingVideo = {
-      url: practiceSong.plainVideo,
-      start: parseTime(practiceSong.plainStart)
-    };
+    try {
+      await this.cuePracticeVideo(practiceSong, { showLoading: true });
+    } catch (err) {
+      this.session = null;
+      this.practiceLayout?.classList.remove('active-phase');
+      this.challengeForm?.classList.remove('hidden');
+      this.challengeSummary?.classList.add('hidden');
+      return;
+    }
     this.videoEnded = false;
     this.pendingTime = null;
     this.cheerButton.disabled = true;
@@ -922,21 +1044,7 @@ class PracticeController {
     this.showChallengeSummary(challengerName, practiceSong);
     this.setScoreboardVisible(false);
     const guideSeen = localStorage.getItem('cheer-trainer-guide') === '1';
-    if (!this.guideModal) {
-      try {
-        await this.beginVideoPlayback({ autoplay: true });
-      } catch (err) {
-        console.error('載入影片失敗', err);
-        toast('載入影片失敗', 'error');
-      }
-      this.enablePracticeControls();
-      return;
-    }
-    if (!guideSeen) {
-      this.openGuide();
-    } else {
-      this.startCountdown();
-    }
+    await this.launchGuideSequence(guideSeen);
   }
 
   armCheerInput() {
@@ -1052,22 +1160,35 @@ class PracticeController {
     this.nameWarningModal?.classList.add('hidden');
   }
 
-  showMobilePlayModal() {
-    this.mobilePlayModal?.classList.remove('hidden');
+  showMobileCountdown() {
+    if (!this.guideModal) return;
+    this.guideInstructions?.classList.add('hidden');
+    this.guideCountdown?.classList.remove('hidden');
+    this.countdownNumberEl?.classList.add('hidden');
+    this.mobileCountdownBtn?.classList.remove('hidden');
+    this.mobileCountdownBtn?.classList.add('show');
+    this.guideConfirmBtn?.classList.add('hidden');
+    this.guideModal.classList.remove('hidden');
   }
 
-  hideMobilePlayModal() {
-    this.mobilePlayModal?.classList.add('hidden');
+  hideMobileCountdown() {
+    this.mobileCountdownBtn?.classList.remove('show');
+    this.mobileCountdownBtn?.classList.add('hidden');
+    this.countdownNumberEl?.classList.remove('hidden');
+    this.guideConfirmBtn?.classList.remove('hidden');
   }
 
-  async handleMobilePlayConfirm() {
-    this.mobilePlayGranted = true;
-    this.hideMobilePlayModal();
-    if (this.pendingMobileStart) {
-      const params = this.pendingMobileStart;
-      this.pendingMobileStart = null;
-      await this.initializePractice(params);
+  async handleMobileCountdownStart() {
+    this.hideMobileCountdown();
+    this.closeGuide();
+    try {
+      await this.beginVideoPlayback({ autoplay: false });
+    } catch (err) {
+      console.error('載入影片失敗', err);
+      toast('載入影片失敗', 'error');
     }
+    this.enablePracticeControls();
+    this.player.play();
   }
 
   appendHistoryEntry(entry) {
@@ -1412,6 +1533,19 @@ const bannedWords = [
 
 function isMobileDevice() {
   return /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent || '');
+}
+
+function isSafariBrowser() {
+  const ua = navigator.userAgent || '';
+  const isSafari = /Safari/i.test(ua);
+  const isOtherWebkit = /Chrome|CriOS|Chromium|Android|Edge|Edg|OPR/i.test(ua);
+  return isSafari && !isOtherWebkit;
+}
+
+function requiresManualPlayback() {
+  if (isMobileDevice()) return true;
+  if (isSafariBrowser()) return true;
+  return false;
 }
 
 function normalizeText(text) {

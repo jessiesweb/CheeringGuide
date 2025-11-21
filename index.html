@@ -148,12 +148,6 @@
     </section>
   </template>
 
-  <script src="https://www.youtube.com/iframe_api"></script>
-  <script src="app.js" type="module"></script>
-</body>
-
-</html>
-
   <div id="guide-modal" class="modal-overlay hidden">
     <div class="modal-box">
       <div id="guide-instructions">
@@ -172,6 +166,7 @@
       <div id="guide-countdown" class="hidden">
         <p>準備開始，倒數中…</p>
         <div class="countdown-number" id="countdown-number">3</div>
+        <button id="mobile-countdown-btn" type="button" class="mobile-countdown hidden">開始應援</button>
       </div>
     </div>
   </div>
@@ -187,15 +182,6 @@
     </div>
   </div>
 
-  <div id="mobile-play-modal" class="modal-overlay hidden">
-    <div class="modal-box small">
-      <h2>播放提醒</h2>
-      <p>手機瀏覽器需要您點擊才能開始播放影片。準備好後請按下「開始播放」。</p>
-      <div class="modal-actions">
-        <button id="mobile-play-ok">開始播放</button>
-      </div>
-    </div>
-  </div>
 
   <div id="name-warning-modal" class="modal-overlay hidden">
     <div class="modal-box small">
@@ -206,3 +192,9 @@
       </div>
     </div>
   </div>
+
+  <script src="https://www.youtube.com/iframe_api"></script>
+  <script src="app.js" type="module"></script>
+</body>
+
+</html>

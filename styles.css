@@ -484,10 +484,11 @@ main label {
 @media (max-width: 768px) {
   .result-header,
   .result-row {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(120px, 1fr) minmax(120px, 1fr) 50px;
+    gap: 0.5rem;
   }
   .result-mark {
-    justify-self: flex-start;
+    justify-self: center;
   }
 }
 
@@ -704,6 +705,20 @@ main label {
   justify-content: center;
   gap: 0.75rem;
 }
+.mobile-countdown {
+  display: none;
+  margin-top: 0.5rem;
+  justify-content: center;
+}
+.mobile-countdown.hidden {
+  display: none;
+}
+@media (max-width: 768px) {
+  .mobile-countdown.show {
+    display: inline-flex;
+  }
+}
+
 
 #guide-countdown {
   text-align: center;

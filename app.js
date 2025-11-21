@@ -1370,8 +1370,7 @@ class PracticeController {
       }
       used.add(idx);
       const entry = entries[idx];
-      const expected = normalizeText(segment.phrase || '');
-      const status = entry.normalized === expected ? 'hit' : 'wrong';
+      const status = segment.normalizedOptions.includes(entry.normalized) ? 'hit' : 'wrong';
       return { segment, entry, status };
     });
     const extras = entries

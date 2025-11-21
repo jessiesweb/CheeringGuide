@@ -548,6 +548,8 @@ class PracticeController {
     this.confirmCancelBtn = document.getElementById('confirm-cancel');
     this.nameWarningModal = document.getElementById('name-warning-modal');
     this.nameWarningOkBtn = document.getElementById('name-warning-ok');
+    this.mobilePlayModal = document.getElementById('mobile-play-modal');
+    this.mobilePlayBtn = document.getElementById('mobile-play-ok');
     this.submitBtn = root.querySelector('#submit-practice');
     this.resultEl = root.querySelector('#practice-result');
     this.resultDetails = root.querySelector('#result-details');
@@ -564,6 +566,8 @@ class PracticeController {
     this.videoEnded = false;
     this.confirmResolver = null;
     this.rankings = [];
+    this.mobilePlayGranted = !isMobileDevice();
+    this.pendingMobileStart = null;
 
     this.populateSongs();
     this.renderRanking();
@@ -610,6 +614,7 @@ class PracticeController {
     this.confirmOkBtn?.addEventListener('click', () => this.resolveConfirmDialog(true));
     this.confirmCancelBtn?.addEventListener('click', () => this.handleCancelResult());
     this.nameWarningOkBtn?.addEventListener('click', () => this.hideNameWarning());
+    this.mobilePlayBtn?.addEventListener('click', () => this.handleMobilePlayConfirm());
   }
 
   bindShortcuts() {
@@ -874,11 +879,22 @@ class PracticeController {
       return;
     }
     const songId = this.songSelect.value;
-    const song = SongStore.findSong(songId);
-    if (!song) {
+    if (!SongStore.findSong(songId)) {
       toast('請選擇歌曲', 'error');
       return;
     }
+    const params = { challengerName, songId };
+    if (isMobileDevice() && !this.mobilePlayGranted) {
+      this.pendingMobileStart = params;
+      this.showMobilePlayModal();
+      return;
+    }
+    await this.initializePractice(params);
+  }
+
+  async initializePractice({ challengerName, songId }) {
+    const song = SongStore.findSong(songId);
+    if (!song) return;
     this.practiceLayout?.classList.add('active-phase');
     this.practiceLayout?.classList.remove('show-results');
     if (this.resultDetails) {
@@ -1034,6 +1050,24 @@ class PracticeController {
 
   hideNameWarning() {
     this.nameWarningModal?.classList.add('hidden');
+  }
+
+  showMobilePlayModal() {
+    this.mobilePlayModal?.classList.remove('hidden');
+  }
+
+  hideMobilePlayModal() {
+    this.mobilePlayModal?.classList.add('hidden');
+  }
+
+  async handleMobilePlayConfirm() {
+    this.mobilePlayGranted = true;
+    this.hideMobilePlayModal();
+    if (this.pendingMobileStart) {
+      const params = this.pendingMobileStart;
+      this.pendingMobileStart = null;
+      await this.initializePractice(params);
+    }
   }
 
   appendHistoryEntry(entry) {
@@ -1374,6 +1408,10 @@ const bannedWords = [
 ];
   const normalized = name.toLowerCase();
   return !bannedWords.some((word) => normalized.includes(word));
+}
+
+function isMobileDevice() {
+  return /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent || '');
 }
 
 function normalizeText(text) {

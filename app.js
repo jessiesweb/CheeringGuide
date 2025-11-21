@@ -627,6 +627,8 @@ class PracticeController {
     this.confirmResolver = null;
     this.rankings = [];
     this.sessionStartSeconds = 0;
+    this.autoFinishing = false;
+    this.sessionStartSeconds = 0;
 
     this.populateSongs();
     this.renderRanking();
@@ -646,8 +648,10 @@ class PracticeController {
       if (!PlayerState) return;
       if (event.data === PlayerState.PLAYING) {
         this.videoEnded = false;
+        this.autoFinishing = false;
       } else if (event.data === PlayerState.ENDED) {
         this.videoEnded = true;
+        this.handleAutoFinish();
       }
     });
   }
@@ -733,6 +737,22 @@ class PracticeController {
       await this.cuePracticeVideo(song);
     } catch {
       /* already toasted */
+    }
+  }
+
+  async handleAutoFinish() {
+    if (this.autoFinishing) return;
+    if (!this.session) return;
+    if (!this.videoEnded) return;
+    if (!this.session.entries.length) return;
+    if (this.practiceLayout?.classList.contains('show-results')) return;
+    this.autoFinishing = true;
+    try {
+      await this.finishPractice({ auto: true });
+    } catch (err) {
+      console.error('自動結算失敗', err);
+    } finally {
+      this.autoFinishing = false;
     }
   }
 
@@ -1207,19 +1227,19 @@ class PracticeController {
     this.cheerButton.classList.add('pulse');
   }
 
-  async finishPractice() {
+  async finishPractice({ auto = false } = {}) {
     if (!this.session) {
-      toast('請先開始練習', 'error');
+      if (!auto) toast('請先開始練習', 'error');
       return;
     }
     this.player.pause();
     const session = this.session;
-    if (!this.videoEnded) {
+    if (!auto && !this.videoEnded) {
       const confirmed = await this.showConfirmDialog('影片還沒結束，確定要結束應援嗎？');
       if (!confirmed) return;
     }
     if (!session.entries.length) {
-      toast('尚未紀錄任何應援', 'error');
+      if (!auto) toast('尚未紀錄任何應援', 'error');
       return;
     }
     const evaluation = evaluateSession(session);
@@ -1486,12 +1506,13 @@ const bannedWords = [
   '他媽', '他媽的', '媽的', '你娘', '尼瑪', '你媽',
   '王八蛋', '白癡', '智障', '北七', '白爛',
   '廢物', '垃圾', '低能', '低能兒', '屁孩', '死屁孩',
+  '醜', '醜八怪', '醜爆', '醜死', '長得醜', '你很醜', '丑八怪', '丑死', '醜人', '醜女', '醜男',
 
   // —— 英文粗口 —— 
   'fuck', 'fuk', 'fk', 'f*ck', 'f**k',
   'shit', 'sh1t',
   'bitch', 'asshole', 'dick', 'bastard', 'motherfucker',
-  'wtf', 'stfu', 'fml',
+  'wtf', 'stfu', 'fml', 'ugly', 'so ugly', 'very ugly', 'ugly af',
 
   // —— 簡體粗口 —— 
   'nmsl', 'cnm', 'tmd', 'sb',

@@ -415,6 +415,25 @@ class YouTubeDriver {
     });
   }
 
+  isPlayerUsable() {
+    if (!this.player) return false;
+    const canLoad = typeof this.player.loadVideoById === 'function';
+    const canCue = typeof this.player.cueVideoById === 'function';
+    return canLoad || canCue;
+  }
+
+  destroyPlayer() {
+    if (this.player && typeof this.player.destroy === 'function') {
+      try {
+        this.player.destroy();
+      } catch (err) {
+        console.warn('無法銷毀播放器', err);
+      }
+    }
+    this.player = null;
+    this.ensurePlayerNode();
+  }
+
   ensurePlayerNode() {
     if (!this.container) return;
     this.container.innerHTML = `<div id="${this.playerId}"></div>`;
@@ -433,16 +452,23 @@ class YouTubeDriver {
     await this.readyPromise;
     const start = Math.max(0, Number.isFinite(startSeconds) ? startSeconds : parseFloat(startSeconds) || 0);
     this.lastStart = start;
-    if (this.player) {
+    if (this.player && !this.isPlayerUsable()) {
+      this.destroyPlayer();
+    }
+    if (this.isPlayerUsable()) {
       const payload = { videoId, startSeconds: start };
       if (!autoplay && typeof this.player.cueVideoById === 'function') {
         this.player.cueVideoById(payload);
-      } else {
+      } else if (typeof this.player.loadVideoById === 'function') {
         this.player.loadVideoById(payload);
         if (!autoplay) this.player.pauseVideo?.();
+      } else {
+        this.destroyPlayer();
       }
-      await readyPromise;
-      return;
+      if (this.player) {
+        await readyPromise;
+        return;
+      }
     }
     this.ensurePlayerNode();
     await new Promise((resolve) => {

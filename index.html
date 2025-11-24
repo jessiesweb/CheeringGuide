@@ -92,6 +92,12 @@
         </div>
       </div>
 
+      <div class="card feedback-block">
+        <h2>留言</h2>
+        <label>許願歌曲 / 建議<input id="feedback-songwish" placeholder="有想練的歌跟建議都可以填寫在這邊呦 ( ੭ ˙ᗜ˙ )੭" /></label>
+        <button type="button" id="submit-feedback" class="ghost">送出</button>
+      </div>
+
       <div class="card video-panel">
         <h2 id="practice-title">尚未選擇歌曲</h2>
         <div id="video-container" class="video-frame"></div>
@@ -103,7 +109,6 @@
         <div class="cheer-controls" id="cheer-controls">
           <button id="cheer-button" class="circle" disabled>\ 應援 /</button>
           <div id="cheer-extra" class="cheer-extra hidden">
-            <div id="cheer-history" class="cheer-history"></div>
             <div class="cheer-entry" id="cheer-entry">
               <div class="cheer-input-row">
                 <span id="cheer-timestamp">0:00</span>
@@ -119,6 +124,7 @@
                 </div>
               </div>
             </div>
+            <div id="cheer-history" class="cheer-history"></div>
           </div>
         </div>
         <button id="submit-practice" disabled>送出結果</button>

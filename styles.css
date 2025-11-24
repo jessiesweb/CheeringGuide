@@ -190,14 +190,7 @@ canvas {
   line-height: 1.5;
   font-size: 16px;
   --primary: #2c61c0;
-  --primary-dark: #2c61c0;
-  --accent: #2c61c0;
-  --surface: #ffffff;
-  --surface-alt: #f5f7ff;
-  --border: #2c61c0;
   --muted: #566480;
-  --bg-start: #f7f9ff;
-  --bg-end: #e9f2ff;
 }
 
 * {
@@ -266,7 +259,7 @@ button,
 input,
 select {
   font: inherit;
-  border: 1px solid var(--border);
+  border: 1px solid var(--primary);
   border-radius: 10px;
   padding: 0.6rem 0.95rem;
   background: #fff;
@@ -297,11 +290,7 @@ button:not(:disabled):active {
   transform: translateY(1px);
 }
 
-button.ghost {
-  background: transparent;
-  color: var(--primary);
-  border: 1px solid rgba(44, 97, 192, 0.35);
-}
+
 
 button.danger {
   background:var(--primary);
@@ -314,11 +303,12 @@ main label {
   flex-direction: column;
   gap: 0.25rem;
   margin-bottom: 0.75rem;
+  margin-top: 0.75rem;
 }
 
 .card,
 .practice-panel {
-  background: var(--surface);
+  background: #fff;
   padding: 1.5rem;
   border-radius: 20px;
   box-shadow: 0 14px 35px rgba(44, 97, 192, 0.12);
@@ -355,7 +345,7 @@ main label {
   color: var(--primary);
 }
 .info-note a {
-  color: var(--accent);
+  color: var(--primary);
   text-decoration: underline;
 }
 #practice-card .cheer-demo,
@@ -385,7 +375,7 @@ main label {
 
 .result-details {
   margin-top: 2.2rem;
-  border-top: 1px solid var(--border);
+  border-top: 1px solid var(--primary);
   padding-top: 1rem;
   display: flex;
   flex-direction: column;
@@ -444,11 +434,11 @@ main label {
 }
 
 .result-phrase {
-  color: var(--primary-dark);
+  color: var(--primary);
 }
 
 .result-entry strong {
-  color: var(--primary-dark);
+  color: var(--primary);
 }
 
 .result-entry span {
@@ -518,7 +508,7 @@ main label {
 
 .list-editor li,
 #song-list li {
-  border: 1px dashed var(--border);
+  border: 1px dashed var(--primary);
   padding: 0.75rem;
   border-radius: 10px;
   display: flex;
@@ -572,6 +562,18 @@ main label {
   display: none;
 }
 
+.practice-layout .card.feedback-block {
+  display: block;
+}
+
+.practice-layout.active-phase:not(.show-results) .card.feedback-block {
+  display: none;
+}
+
+.practice-layout.show-results > .card.feedback-block {
+  display: block !important;
+}
+
 .practice-layout.active-phase .card:nth-of-type(n+2),
 .practice-layout.active-phase #scoreboard,
 .practice-layout.active-phase #practice-card,
@@ -587,7 +589,7 @@ main label {
   display: block;
 }
 
-.practice-layout.show-results > *:not(#scoreboard) {
+.practice-layout.show-results > *:not(#scoreboard):not(#ranking-card):not(.feedback-block) {
   display: none !important;
 }
 
@@ -596,8 +598,42 @@ main label {
   display: block !important;
 }
 
+.practice-layout.show-results .card.feedback-block {
+  display: none !important;
+}
+
 .practice-layout.active-phase .card:first-of-type {
   display: none;
+}
+
+.popup-banner {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  right: auto;
+  bottom: auto;
+  transform: translate(-50%, -50%);
+  padding: 1.2rem 1.4rem;
+  background: #fff;
+  border: 1px solid var(--primary);
+  box-shadow: 0 18px 48px rgba(0, 22, 73, 0.22);
+  border-radius: 16px;
+  max-width: min(90vw, 420px);
+  z-index: 4000;
+  transition: opacity 0.18s ease, transform 0.18s ease;
+}
+
+.popup-banner.hide {
+  opacity: 0;
+  transform: translate(-50%, calc(-50% + 10px));
+  pointer-events: none;
+}
+
+.popup-text {
+  color: var(--primary);
+  font-weight: 700;
+  font-size: 1.1rem;
+  text-align: center;
 }
 
 #practice-view button {
@@ -700,6 +736,12 @@ main label {
 .modal-actions button {
   min-width: 140px;
 }
+.modal-actions #confirm-cancel {
+  color: var(--primary);
+  border: 1px solid var(--primary);
+  background: #fff;
+
+}
 
 .modal-box.small .modal-actions {
   justify-content: center;
@@ -780,6 +822,7 @@ main label {
   display: flex;
   flex-direction: column;
   gap: 1rem;
+  padding: 1rem 0 0 0;
 }
 
 .cheer-entry {
@@ -799,7 +842,7 @@ main label {
 .cheer-input-row #cheer-timestamp {
   min-width: 3.5rem;
   font-weight: 600;
-  color: var(--primary-dark);
+  color: var(--primary);
   text-align: right;
 }
 
@@ -822,6 +865,9 @@ main label {
 }
 .cheer-input-actions button {
   white-space: nowrap;
+  background: #fff;
+  border: solid 1px var(--primary);
+  color: var(--primary);
 }
 
 @media (max-width: 600px) {
@@ -870,7 +916,7 @@ main label {
 }
 
 .cheer-history-item strong {
-  color: var(--primary-dark);
+  color: var(--primary);
   min-width: 3.5rem;
   text-align: right;
 }
@@ -931,7 +977,7 @@ button.circle {
   height: 120px;
   border-radius: 50%;
   font-size: 1.2rem;
-  background: var(--accent);
+  background: var(--primary);
   transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
@@ -943,7 +989,7 @@ button.circle.pulse {
   0% {
     transform: scale(1);
     box-shadow: 0 0 0 rgba(43, 193, 255, 0.3);
-    background: var(--accent);
+    background: var(--primary);
   }
 
   40% {
@@ -955,13 +1001,13 @@ button.circle.pulse {
   100% {
     transform: scale(1);
     box-shadow: 0 0 0 rgba(43, 193, 255, 0);
-    background: var(--accent);
+    background: var(--primary);
   }
 }
 
 .cheer-input-shell .hint-panel {
   margin-top: 0;
-  width: 100%;
+  width: 3%;
 }
 
 .cheer-input-shell .hint-list {
@@ -972,7 +1018,7 @@ button.circle.pulse {
   display: flex;
   flex-direction: column;
   gap: 0;
-  border: 1px solid var(--border);
+  border: 1px solid var(--primary);
   background: #fff;
   border-radius: 0.75rem;
   box-shadow: 0 18px 35px rgba(44, 97, 192, 0.18);
@@ -997,12 +1043,12 @@ button.circle.pulse {
 }
 
 .hint-list button+button {
-  border-top: 1px solid var(--border);
+  border-top: 1px solid var(--primary);
 }
 
 .hint-list button.active {
   background: rgba(44, 97, 192, 0.12);
-  color: var(--accent);
+  color: var(--primary);
 }
 
 .muted {
@@ -1020,7 +1066,7 @@ button.circle.pulse {
 .ranking-header {
   font-weight: 700;
   color: var(--primary);
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--primary);
   text-align: center;
 }
 

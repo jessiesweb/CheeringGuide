@@ -4,10 +4,10 @@ const STORAGE_KEYS = {
 };
 
 const APP_SCRIPT_URL =
-  'https://script.google.com/macros/s/AKfycbxEMmhhyEJdhBK07iRMMvvc-Rw8jC3Pb0XJa_0Q0FEdpqP8euNSf2kh2JXuQOW0QU6nBA/exec';
+  'https://script.google.com/macros/s/AKfycbxFvQO3Ixk_bqvwluN0C11kneA2I2epfBxwAgzmW9p3YrJMv4CfLFAN_HzPHEnwO2Q32g/exec';
 
 const FIREBASE_DB_URL = 'https://cheer-9063f-default-rtdb.firebaseio.com';
-const TIME_TOLERANCE = 0.4; // seconds tolerance when matching entries to segments
+const TIME_TOLERANCE = 0.6; // seconds tolerance when matching entries to segments
 
 const FirebaseApi = {
   baseUrl: FIREBASE_DB_URL.replace(/\/$/, ''),
@@ -40,14 +40,6 @@ const FirebaseApi = {
   }
 };
 
-const toast = (() => {
-  return (message, type = 'info') => {
-    // Toasts disabled per request; fallback to console logging.
-    const logger = type === 'error' ? console.error : console.log;
-    logger(`[toast:${type}] ${message}`);
-  };
-})();
-
 const loadingOverlay = (() => {
   let overlay;
   let textEl;
@@ -76,6 +68,43 @@ const loadingOverlay = (() => {
         overlay.classList.add('hidden');
       }
     }
+  };
+})();
+
+const popupBanner = (() => {
+  let node;
+  let textEl;
+  let timer;
+
+  function ensure() {
+    if (node) return;
+    node = document.createElement('div');
+    node.className = 'popup-banner hide';
+    textEl = document.createElement('span');
+    textEl.className = 'popup-text';
+    node.appendChild(textEl);
+    document.body.appendChild(node);
+  }
+
+  return {
+    show(message = '', duration = 2000) {
+      ensure();
+      textEl.textContent = message;
+      node.classList.remove('hide');
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => {
+        node.classList.add('hide');
+      }, duration);
+    }
+  };
+})();
+
+const toast = (() => {
+  return (message, type = 'info') => {
+    const logger = type === 'error' ? console.error : console.log;
+    const displayMessage = String(message || '');
+    popupBanner.show(displayMessage, 1000);
+    logger(`[toast:${type}] ${displayMessage}`);
   };
 })();
 
@@ -625,6 +654,8 @@ class PracticeController {
     this.challengeSummary = root.querySelector('#challenge-summary');
     this.summaryNameEl = root.querySelector('#summary-name');
     this.summarySongEl = root.querySelector('#summary-song');
+    this.feedbackSongInput = root.querySelector('#feedback-songwish');
+    this.feedbackSubmitBtn = root.querySelector('#submit-feedback');
     this.guideModal = document.getElementById('guide-modal');
     this.guideConfirmBtn = document.getElementById('guide-confirm');
     this.guideInstructions = document.getElementById('guide-instructions');
@@ -705,6 +736,7 @@ class PracticeController {
     this.confirmCancelBtn?.addEventListener('click', () => this.handleCancelResult());
     this.nameWarningOkBtn?.addEventListener('click', () => this.hideNameWarning());
     this.mobileCountdownBtn?.addEventListener('click', () => this.handleMobileCountdownStart());
+    this.feedbackSubmitBtn?.addEventListener('click', () => this.submitFeedback());
   }
 
   bindShortcuts() {
@@ -833,6 +865,43 @@ class PracticeController {
     });
     this.hintSuggestions.classList.remove('hidden');
     this.resetHintSelection();
+  }
+
+  async submitFeedback() {
+    if (!this.feedbackSongInput) return;
+    const wish = (this.feedbackSongInput?.value || '').trim();
+    if (!wish) {
+      toast('請填寫想許願的歌曲或建議', 'error');
+      return;
+    }
+    const name = this.challengerInput?.value.trim() || '匿名挑戰者';
+    const songId = this.songSelect?.value || '';
+    const songLabel = songId ? this.songSelect?.selectedOptions?.[0]?.textContent || '' : '';
+    const payload = {
+      action: 'feedback',
+      name,
+      wish,
+      songId,
+      songLabel
+    };
+    try {
+      this.feedbackSubmitBtn.disabled = true;
+      setLoading(true, '送出留言中...');
+      await fetch(APP_SCRIPT_URL, {
+        method: 'POST',
+        body: JSON.stringify(payload)
+      }).then((response) => response.json().catch(() => ({})));
+      const successMsg = '留言已送出，感謝你的建議！';
+      toast(successMsg, 'success');
+      popupBanner.show(successMsg);
+      if (this.feedbackSongInput) this.feedbackSongInput.value = '';
+    } catch (err) {
+      console.error('送出失敗', err);
+      toast('送出失敗，請稍後再試', 'error');
+    } finally {
+      if (this.feedbackSubmitBtn) this.feedbackSubmitBtn.disabled = false;
+      setLoading(false);
+    }
   }
 
   insertHint(hint) {
@@ -1154,7 +1223,6 @@ class PracticeController {
       this.resetHintSelection();
     }
     this.player.play();
-    toast('已記錄', 'success');
   }
 
   cancelCheerEntry() {
@@ -1242,7 +1310,7 @@ class PracticeController {
     const item = document.createElement('div');
     item.className = 'cheer-history-item';
     item.innerHTML = `<strong>${formatTime(entry.time)}</strong><span>${entry.raw}</span>`;
-    this.cheerHistory.appendChild(item);
+    this.cheerHistory.insertBefore(item, this.cheerHistory.firstChild);
   }
 
   triggerCheerAnimation() {
@@ -1399,6 +1467,20 @@ class PracticeController {
       const status = segment.normalizedOptions.includes(entry.normalized) ? 'hit' : 'wrong';
       return { segment, entry, status };
     });
+    // Try to pair late/early but phrase-matching entries to missing segments instead of showing as "無此應援".
+    rows.forEach((row, segmentIndex) => {
+      if (row.entry || row.status !== 'missing') return;
+      const segment = normalizedSegments[segmentIndex];
+      const matchIdx = entries.findIndex((entry, index) => {
+        if (used.has(index)) return false;
+        return segment.normalizedOptions.includes(entry.normalized);
+      });
+      if (matchIdx >= 0) {
+        used.add(matchIdx);
+        row.entry = entries[matchIdx];
+        row.status = 'wrong';
+      }
+    });
     const extras = entries
       .map((entry, index) => ({ entry, index }))
       .filter(({ index }) => !used.has(index))
@@ -1488,8 +1570,15 @@ function alignSongSegments(song) {
   }));
 }
 
+function toDisplaySecond(value) {
+  return Math.round(Number(value) || 0);
+}
+
 function isWithinRange(time, segment) {
-  return time >= segment.start - TIME_TOLERANCE && time <= segment.end + TIME_TOLERANCE;
+  const entrySec = toDisplaySecond(time);
+  const start = toDisplaySecond(segment.start);
+  const end = toDisplaySecond(segment.end);
+  return entrySec >= start && entrySec <= end;
 }
 
 function describeAccuracy(score) {

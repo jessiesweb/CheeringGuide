@@ -150,8 +150,10 @@ class SettingsController {
     this.form = root.querySelector('#song-form');
     this.segmentsList = root.querySelector('#segments-list');
     this.hintsList = root.querySelector('#hints-list');
+    this.presetsList = root.querySelector('#presets-list');
     this.segmentsRawInput = root.querySelector('#segments-raw');
     this.hintsRawInput = root.querySelector('#hints-raw');
+    this.presetsRawInput = root.querySelector('#presets-raw');
     this.songList = root.querySelector('#song-list ul');
     this.deleteBtn = root.querySelector('#delete-song');
     this.refreshBtn = root.querySelector('#refresh-songs');
@@ -167,6 +169,7 @@ class SettingsController {
   ensureDefaultRows() {
     if (!this.segmentsList.children.length) this.addSegmentRow();
     if (!this.hintsList.children.length) this.addHintRow();
+    if (!this.presetsList.children.length) this.addPresetRow();
   }
 
   resetFormToNewSong() {
@@ -204,6 +207,15 @@ class SettingsController {
     this.hintsList.appendChild(li);
   }
 
+  addPresetRow(value = '') {
+    const li = document.createElement('li');
+    li.innerHTML = `
+      <input data-field="preset" placeholder="預設按鈕文字" value="${value}" />
+      <button type="button" class="ghost" data-action="remove-preset">刪除</button>
+    `;
+    this.presetsList.appendChild(li);
+  }
+
   bindEvents() {
     this.form.addEventListener('submit', (event) => this.handleSubmit(event));
     this.deleteBtn.addEventListener('click', () => this.handleDelete());
@@ -216,6 +228,8 @@ class SettingsController {
       if (target.matches('[data-action="remove-segment"]')) target.closest('li')?.remove();
       if (target.matches('[data-action="add-hint"]')) this.addHintRow();
       if (target.matches('[data-action="remove-hint"]')) target.closest('li')?.remove();
+      if (target.matches('[data-action="add-preset"]')) this.addPresetRow();
+      if (target.matches('[data-action="remove-preset"]')) target.closest('li')?.remove();
       if (target.matches('[data-song-id]')) this.loadSong(target.dataset.songId);
     });
   }
@@ -260,6 +274,9 @@ class SettingsController {
     this.hintsList.innerHTML = '';
     (song.hints || []).forEach((hint) => this.addHintRow(hint));
     if (!this.hintsList.children.length) this.addHintRow();
+    this.presetsList.innerHTML = '';
+    (song.defaultButtons || []).forEach((preset) => this.addPresetRow(preset));
+    if (!this.presetsList.children.length) this.addPresetRow();
     if (this.segmentsRawInput) {
       this.segmentsRawInput.value = (song.segments || [])
         .map((segment) => `${segment.range} ${segment.phrase}`)
@@ -267,6 +284,9 @@ class SettingsController {
     }
     if (this.hintsRawInput) {
       this.hintsRawInput.value = (song.hints || []).join('\n');
+    }
+    if (this.presetsRawInput) {
+      this.presetsRawInput.value = (song.defaultButtons || []).join('\n');
     }
   }
 
@@ -310,6 +330,20 @@ class SettingsController {
       .filter(Boolean);
   }
 
+  parsePresetsInput() {
+    if (this.presetsRawInput && this.presetsRawInput.value.trim()) {
+      return this.presetsRawInput.value
+        .split(/\n+/)
+        .map((line) => line.trim())
+        .filter(Boolean)
+        .flatMap((line) => splitHints(line));
+    }
+    if (!this.presetsList) return [];
+    return Array.from(this.presetsList.querySelectorAll('[data-field="preset"]'))
+      .map((input) => input.value.trim())
+      .filter(Boolean);
+  }
+
   serializeForm() {
     const formData = new FormData(this.form);
     const plainStart = (formData.get('plainStart') || '0:00').trim() || '0:00';
@@ -317,6 +351,7 @@ class SettingsController {
     const cheerStart = cheerStartRaw || '0:00';
     const segments = this.parseSegmentsInput();
     const hints = this.parseHintsInput();
+    const defaultButtons = this.parsePresetsInput();
 
     return {
       id: this.currentSongId || crypto.randomUUID?.() || `song-${Date.now()}`,
@@ -327,7 +362,8 @@ class SettingsController {
       plainVideo: formData.get('plainVideo').trim(),
       plainStart,
       segments,
-      hints
+      hints,
+      defaultButtons
     };
   }
 
@@ -637,6 +673,7 @@ class PracticeController {
   constructor(root) {
     this.root = root;
     this.practiceLayout = root.querySelector('.practice-layout');
+    this.artistSelect = root.querySelector('#practice-artist');
     this.songSelect = root.querySelector('#practice-song');
     this.challengerInput = root.querySelector('#challenger-name');
     this.startButton = root.querySelector('#start-practice');
@@ -650,6 +687,7 @@ class PracticeController {
     this.cheerTimestamp = root.querySelector('#cheer-timestamp');
     this.cheerHistory = root.querySelector('#cheer-history');
     this.hintSuggestions = root.querySelector('#hint-suggestions');
+    this.presetButtons = root.querySelector('#preset-buttons');
     this.challengeForm = root.querySelector('#challenge-form');
     this.challengeSummary = root.querySelector('#challenge-summary');
     this.summaryNameEl = root.querySelector('#summary-name');
@@ -674,6 +712,7 @@ class PracticeController {
     this.rankingList = root.querySelector('#ranking-list');
     this.scoreboard = root.querySelector('#scoreboard');
     this.player = new YouTubeDriver(root.querySelector('#video-container'));
+    this.songWrapper = root.querySelector('#practice-song-wrapper');
 
     this.session = null;
     this.pendingTime = null;
@@ -686,6 +725,8 @@ class PracticeController {
     this.sessionStartSeconds = 0;
     this.autoFinishing = false;
     this.sessionStartSeconds = 0;
+    this.currentDefaultButtons = [];
+    this.artistSelect = root.querySelector('#practice-artist');
 
     this.populateSongs();
     this.renderRanking();
@@ -715,7 +756,8 @@ class PracticeController {
 
   bindEvents() {
     this.startButton.addEventListener('click', () => this.startPractice());
-    this.songSelect.addEventListener('change', () => this.handleSongSelectionChange());
+    this.artistSelect?.addEventListener('change', () => this.handleArtistChange());
+    this.songSelect?.addEventListener('change', () => this.handleSongSelectionChange());
     this.cheerButton.addEventListener('click', () => this.armCheerInput());
     this.submitBtn.addEventListener('click', () => this.finishPractice());
     this.cheerInput.addEventListener('keydown', (event) => this.handleCheerKeyDown(event));
@@ -737,6 +779,12 @@ class PracticeController {
     this.nameWarningOkBtn?.addEventListener('click', () => this.hideNameWarning());
     this.mobileCountdownBtn?.addEventListener('click', () => this.handleMobileCountdownStart());
     this.feedbackSubmitBtn?.addEventListener('click', () => this.submitFeedback());
+    this.presetButtons?.addEventListener('click', (event) => {
+      const target = event.target;
+      if (!(target instanceof HTMLButtonElement)) return;
+      const text = target.dataset.preset || target.textContent || '';
+      this.handlePresetClick(text);
+    });
   }
 
   bindShortcuts() {
@@ -757,8 +805,13 @@ class PracticeController {
   }
 
   handleChallengerInput() {
-    const hasName = Boolean(this.challengerInput.value.trim());
-    this.startButton.disabled = !hasName;
+    this.updateStartButtonState();
+  }
+
+  updateStartButtonState() {
+    const hasName = Boolean(this.challengerInput?.value.trim());
+    const hasSong = Boolean(this.songSelect?.value);
+    this.startButton.disabled = !(hasName && hasSong);
   }
 
   async cuePracticeVideo(song, { showLoading = false } = {}) {
@@ -782,20 +835,29 @@ class PracticeController {
   async handleSongSelectionChange() {
     if (!this.songSelect) return;
     const songId = this.songSelect.value;
+    this.updateStartButtonState();
     const song = SongStore.findSong(songId);
     if (!song) {
       this.titleEl.textContent = '尚未選擇歌曲';
       this.player.stop();
+      this.renderPresetButtons([]);
       return;
     }
     if (!this.practiceLayout?.classList.contains('active-phase')) {
       this.titleEl.textContent = `${song.artist} - ${song.title}`;
     }
+    this.renderPresetButtons(song.defaultButtons || []);
     try {
       await this.cuePracticeVideo(song);
     } catch {
       /* already toasted */
     }
+  }
+
+  handleArtistChange() {
+    const artist = this.artistSelect?.value || '';
+    this.populateSongOptions(artist);
+    this.handleSongSelectionChange();
   }
 
   async handleAutoFinish() {
@@ -836,12 +898,13 @@ class PracticeController {
 
   handleCheerInput() {
     if (this.cheerInput.disabled) return;
-    this.renderHintSuggestions(this.cheerInput.value.trim());
+    this.renderHintSuggestions(this.cheerInput.value);
   }
 
   renderHintSuggestions(query = '') {
     if (!this.hintSuggestions) return;
-    const normalized = query.trim().toLowerCase();
+    const { token } = this.splitInputToken(query);
+    const normalized = token.toLowerCase();
     this.hintSuggestions.innerHTML = '';
     if (!normalized) {
       this.hintSuggestions.classList.add('hidden');
@@ -865,6 +928,25 @@ class PracticeController {
     });
     this.hintSuggestions.classList.remove('hidden');
     this.resetHintSelection();
+  }
+
+  renderPresetButtons(buttons = []) {
+    if (!this.presetButtons) return;
+    this.presetButtons.innerHTML = '';
+    const items = Array.isArray(buttons) ? buttons.filter(Boolean) : [];
+    if (!items.length) {
+      this.presetButtons.classList.add('hidden');
+      return;
+    }
+    items.forEach((text) => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'ghost';
+      btn.dataset.preset = text;
+      btn.textContent = text;
+      this.presetButtons.appendChild(btn);
+    });
+    this.presetButtons.classList.remove('hidden');
   }
 
   async submitFeedback() {
@@ -904,14 +986,42 @@ class PracticeController {
     }
   }
 
-  insertHint(hint) {
-    if (!hint || this.cheerInput.disabled) return;
-    this.cheerInput.value = hint;
+  splitInputToken(text = '') {
+    const match = String(text).match(/^(.*?)(\S*)$/) || [];
+    return { prefix: match[1] || '', token: match[2] || '' };
+  }
+
+  insertHint(hint, { append = false, replaceToken = true } = {}) {
+    if (!hint) return;
+    if (this.cheerInput.disabled) return;
+    const current = this.cheerInput.value;
+    if (append) {
+      const spacer = current ? ' ' : '';
+      this.cheerInput.value = `${current}${spacer}${hint}`;
+    } else if (replaceToken) {
+      const { prefix } = this.splitInputToken(current);
+      this.cheerInput.value = `${prefix}${hint}`;
+    } else {
+      this.cheerInput.value = hint;
+    }
     this.cheerInput.focus();
     if (this.hintSuggestions) {
       this.hintSuggestions.classList.add('hidden');
       this.resetHintSelection();
     }
+  }
+
+  handlePresetClick(text) {
+    const value = text.trim();
+    if (!value) return;
+    if (!this.session) {
+      toast('請先開始練習', 'error');
+      return;
+    }
+    if (this.cheerInput.disabled) {
+      this.armCheerInput();
+    }
+    this.insertHint(value, { append: true, replaceToken: false });
   }
 
   getHintButtons() {
@@ -1099,17 +1209,64 @@ class PracticeController {
 
   populateSongs() {
     const songs = SongStore.getSongs();
+    const previousArtist = this.artistSelect?.value || '';
+    const previousSong = this.songSelect?.value || '';
+    if (this.artistSelect) {
+      this.artistSelect.innerHTML = '';
+      const placeholder = document.createElement('option');
+      placeholder.value = '';
+      placeholder.textContent = '選擇歌手 / 團體';
+      this.artistSelect.appendChild(placeholder);
+      const artists = Array.from(new Set(songs.map((song) => song.artist).filter(Boolean))).sort();
+      artists.forEach((artist) => {
+        const option = document.createElement('option');
+        option.value = artist;
+        option.textContent = artist;
+        this.artistSelect.appendChild(option);
+      });
+      if (previousArtist && artists.includes(previousArtist)) {
+        this.artistSelect.value = previousArtist;
+      }
+    }
+    const selectedArtist = this.artistSelect?.value || '';
+    this.populateSongOptions(selectedArtist, { preserveSongId: previousSong });
+    this.updateStartButtonState();
+    this.handleSongSelectionChange();
+  }
+
+  populateSongOptions(artist, { preserveSongId = '' } = {}) {
+    if (!this.songSelect) return;
+    if (!artist) {
+      this.songSelect.innerHTML = '';
+      const placeholder = document.createElement('option');
+      placeholder.value = '';
+      placeholder.textContent = '請先選歌手';
+      this.songSelect.appendChild(placeholder);
+      this.songSelect.disabled = true;
+      this.songWrapper?.classList.add('hidden');
+      return;
+    }
+    const filtered = SongStore.getSongs().filter((song) => song.artist === artist);
     this.songSelect.innerHTML = '';
     const placeholder = document.createElement('option');
     placeholder.value = '';
     placeholder.textContent = '選擇歌曲';
     this.songSelect.appendChild(placeholder);
-    songs.forEach((song) => {
+    let selectedSongId = '';
+    filtered.forEach((song) => {
       const option = document.createElement('option');
       option.value = song.id;
-      option.textContent = `${song.artist} - ${song.title}`;
+      option.textContent = song.title || song.id;
       this.songSelect.appendChild(option);
     });
+    if (preserveSongId && filtered.some((song) => song.id === preserveSongId)) {
+      selectedSongId = preserveSongId;
+    }
+    this.songSelect.value = selectedSongId;
+    this.songSelect.disabled = !filtered.length;
+    if (this.songWrapper) {
+      this.songWrapper.classList.toggle('hidden', !artist);
+    }
   }
 
   async startPractice() {
@@ -1155,7 +1312,11 @@ class PracticeController {
     this.cheerInput.value = '';
     this.cheerExtra.classList.add('hidden');
     this.currentHints = Array.isArray(practiceSong.hints) ? practiceSong.hints : [];
+    this.currentDefaultButtons = Array.isArray(practiceSong.defaultButtons)
+      ? practiceSong.defaultButtons
+      : [];
     this.renderHintSuggestions('');
+    this.renderPresetButtons(this.currentDefaultButtons);
     this.showChallengeSummary(challengerName, practiceSong);
     this.setScoreboardVisible(false);
     const guideSeen = localStorage.getItem('cheer-trainer-guide') === '1';
@@ -1337,7 +1498,7 @@ class PracticeController {
       return;
     }
     const evaluation = evaluateSession(session);
-    const mistakes = Math.max(0, evaluation.expectedCount - evaluation.textMatches + evaluation.extras);
+    const mistakes = Math.max(0, evaluation.mistakes ?? evaluation.expectedCount - evaluation.textMatches + evaluation.extras);
     const rating = describeAccuracy(evaluation.score);
     this.resultEl.innerHTML = `
     <div class="result-summary">${session.challenger} ${evaluation.textMatches}/${evaluation.expectedCount} 句命中，錯誤 ${mistakes} 句（含多寫 ${evaluation.extras} 句）</div>
@@ -1467,20 +1628,55 @@ class PracticeController {
       const status = segment.normalizedOptions.includes(entry.normalized) ? 'hit' : 'wrong';
       return { segment, entry, status };
     });
-    // Try to pair late/early but phrase-matching entries to missing segments instead of showing as "無此應援".
-    rows.forEach((row, segmentIndex) => {
-      if (row.entry || row.status !== 'missing') return;
+    // Try to pair remaining entries to missing segments bounded by neighboring matched segments.
+    const missingIndices = rows
+      .map((row, index) => (row.status === 'missing' ? index : -1))
+      .filter((idx) => idx >= 0);
+    const unmatched = entries
+      .map((entry, index) => ({ entry, index }))
+      .filter(({ index }) => !used.has(index));
+
+    function neighborTimes(rowIndex) {
+      let prevTime = -Infinity;
+      for (let i = rowIndex - 1; i >= 0; i -= 1) {
+        if (rows[i].entry) {
+          prevTime = rows[i].entry.time;
+          break;
+        }
+      }
+      let nextTime = Infinity;
+      for (let i = rowIndex + 1; i < rows.length; i += 1) {
+        if (rows[i].entry) {
+          nextTime = rows[i].entry.time;
+          break;
+        }
+      }
+      return { prevTime, nextTime };
+    }
+
+    missingIndices.forEach((segmentIndex) => {
       const segment = normalizedSegments[segmentIndex];
-      const matchIdx = entries.findIndex((entry, index) => {
-        if (used.has(index)) return false;
-        return segment.normalizedOptions.includes(entry.normalized);
-      });
-      if (matchIdx >= 0) {
-        used.add(matchIdx);
-        row.entry = entries[matchIdx];
-        row.status = 'wrong';
+      const { prevTime, nextTime } = neighborTimes(segmentIndex);
+      const candidates = unmatched
+        .filter(({ entry, index }) => {
+          if (used.has(index)) return false;
+          if (!segment.normalizedOptions.includes(entry.normalized)) return false;
+          return entry.time > prevTime && entry.time < nextTime;
+        })
+        .map(({ entry, index }) => ({
+          entry,
+          index,
+          distance: Math.abs(entry.time - segment.start)
+        }))
+        .sort((a, b) => a.distance - b.distance);
+      const picked = candidates[0];
+      if (picked) {
+        used.add(picked.index);
+        rows[segmentIndex].entry = picked.entry;
+        rows[segmentIndex].status = 'wrong';
       }
     });
+
     const extras = entries
       .map((entry, index) => ({ entry, index }))
       .filter(({ index }) => !used.has(index))
@@ -1518,13 +1714,14 @@ function evaluateSession(session) {
   }));
 
   const entries = session.entries;
-  let textMatches = 0;
   const usedEntryIndex = new Set();
+  let textMatches = 0;
+
+  // 先嘗試時間內命中
   expectedSegments.forEach((segment) => {
     const idx = entries.findIndex((entry, index) => {
       if (usedEntryIndex.has(index)) return false;
-      const inRange = isWithinRange(entry.time, segment);
-      return inRange && segment.normalizedOptions.includes(entry.normalized);
+      return isWithinRange(entry.time, segment) && segment.normalizedOptions.includes(entry.normalized);
     });
     if (idx >= 0) {
       usedEntryIndex.add(idx);
@@ -1532,15 +1729,42 @@ function evaluateSession(session) {
     }
   });
 
+  // 再嘗試將未使用的正確詞彙配對到缺漏段（遵循結果頁邏輯）
+  const missingIndices = expectedSegments
+    .map((segment, i) => {
+      const hasHit = entries.some((entry, idx) => usedEntryIndex.has(idx) && isWithinRange(entry.time, segment));
+      return hasHit ? -1 : i;
+    })
+    .filter((i) => i >= 0);
+
+  missingIndices.forEach((segIdx) => {
+    const segment = expectedSegments[segIdx];
+    const candidates = entries
+      .map((entry, index) => ({ entry, index }))
+      .filter(({ index }) => !usedEntryIndex.has(index))
+      .filter(({ entry }) => segment.normalizedOptions.includes(entry.normalized));
+    if (!candidates.length) return;
+
+    // 找到與該段落最近的未使用正確詞
+    const best = candidates
+      .map((c) => ({ ...c, distance: Math.abs(c.entry.time - segment.start) }))
+      .sort((a, b) => a.distance - b.distance)[0];
+    if (best) {
+      usedEntryIndex.add(best.index);
+      // 即便是錯位也算作嘗試，命中數不增加，錯誤數由 extras + 未命中計算
+    }
+  });
+
   const extraEntries = entries
     .map((entry, index) => ({ entry, index }))
     .filter(({ index }) => !usedEntryIndex.has(index))
     .filter(({ entry }) => !isDuplicateOfUsed(entry, entries, usedEntryIndex)).length;
-  const expectedCount = expectedSegments.length || 1;
-  const effectiveHits = Math.max(0, textMatches - extraEntries);
-  const score = Math.round((effectiveHits / expectedCount) * 100);
 
-  return { score, textMatches, expectedCount, extras: extraEntries };
+  const expectedCount = expectedSegments.length || 1;
+  const mistakes = expectedCount - textMatches + extraEntries;
+  const score = Math.max(0, Math.round(((expectedCount - mistakes) / expectedCount) * 100));
+
+  return { score, textMatches, expectedCount, extras: extraEntries, mistakes };
 }
 
 function parseRange(rangeText = '0:00-0:00') {
@@ -1754,7 +1978,7 @@ async function fetchSongsFromServer({ silent = false } = {}) {
     const raw = await FirebaseApi.listSongs();
     const songs = normalizeFetchedSongs(raw);
     SongStore.setSongs(songs);
-    if (!silent) toast('歌曲已更新', 'success');
+    // if (!silent) toast('歌曲已更新', 'success');
     return songs;
   } catch (err) {
     console.error('讀取歌曲失敗', err);
@@ -1926,7 +2150,8 @@ function normalizeSong(song) {
     plainVideo: song.plainVideo || '',
     plainStart: song.plainStart || '0:00',
     segments: normalizeSegments(song.segments),
-    hints: normalizeHints(song.hints)
+    hints: normalizeHints(song.hints),
+    defaultButtons: normalizeHints(song.defaultButtons)
   };
 }
 

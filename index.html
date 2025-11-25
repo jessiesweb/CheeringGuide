@@ -51,6 +51,17 @@
           <ul id="hints-list" class="hidden"></ul>
         </div>
 
+        <div class="list-editor" data-list="presets">
+          <div class="list-header">
+            <h3>預設按鈕</h3>
+          </div>
+          <div class="bulk-field">
+            <textarea id="presets-raw" placeholder="尖叫&#10;應援詞1,應援詞2"></textarea>
+            <small>格式同應援提示：每行一筆，可用逗號分隔多個</small>
+          </div>
+          <ul id="presets-list" class="hidden"></ul>
+        </div>
+
         <div class="form-actions">
           <button type="submit">儲存歌曲</button>
           <button type="button" id="delete-song" class="danger">刪除歌曲</button>
@@ -73,8 +84,11 @@
         <h2>挑戰資訊</h2>
         <div id="challenge-form">
           <label>挑戰者名稱 <input id="challenger-name" placeholder="如果有上榜會顯示於排名" /></label>
-          <label>選擇歌曲
-            <select id="practice-song"></select>
+          <label>選擇歌手 / 團體
+            <select id="practice-artist"></select>
+          </label>
+          <label id="practice-song-wrapper" class="hidden">選擇歌曲
+            <select id="practice-song" disabled></select>
           </label>
           <button id="start-practice" disabled>開始練習</button>
         </div>
@@ -113,7 +127,7 @@
               <div class="cheer-input-row">
                 <span id="cheer-timestamp">0:00</span>
                 <div class="cheer-input-shell">
-                  <input id="cheer-input" placeholder="輸入應援句 (標點以空白、大小寫不分)" disabled />
+                  <input id="cheer-input" placeholder="輸入應援句 (標點以空白、大小寫不分)" autocomplete="off" disabled />
                   <div class="hint-panel">
                     <div id="hint-suggestions" class="hint-list hidden"></div>
                   </div>
@@ -123,6 +137,7 @@
                   </div>
                 </div>
               </div>
+              <div id="preset-buttons" class="preset-buttons"></div>
             </div>
             <div id="cheer-history" class="cheer-history"></div>
           </div>
@@ -196,6 +211,7 @@
 
   <script src="https://www.youtube.com/iframe_api"></script>
   <script src="app.js" type="module"></script>
+  <footer class="site-footer">© 2025 Jessie. All rights reserved.</footer>
 </body>
 
 </html>

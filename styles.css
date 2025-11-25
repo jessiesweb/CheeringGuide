@@ -517,6 +517,19 @@ main label {
   align-items: center;
 }
 
+#song-list .song-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  gap: 0.5rem;
+}
+
+#song-list .list-actions {
+  display: flex;
+  gap: 0.25rem;
+}
+
 .list-editor input {
   flex: 1;
 }

@@ -1588,8 +1588,25 @@ class PracticeController {
     `;
     const body = rows
       .map(({ segment, entry, status }) => {
+        const displayPhrase = (() => {
+          if (!segment) return '';
+          const raw = segment.phrase;
+          const tokens = Array.isArray(raw)
+            ? raw
+            : String(raw || '')
+                .split(',')
+                .map((t) => t.trim())
+                .filter(Boolean);
+          if (entry && tokens.length) {
+            const normalizedTokens = tokens.map((t) => normalizeText(t));
+            const matchedIdx = normalizedTokens.findIndex((norm) => norm === entry.normalized);
+            if (matchedIdx >= 0) return tokens[matchedIdx];
+          }
+          if (tokens.length) return tokens[0];
+          return raw || '';
+        })();
         const segmentBlock = segment
-          ? `<div class="result-segment"><div class="result-time">${segment.range || formatTime(segment.start)}</div><div class="result-phrase">${segment.phrase || ''}</div></div>`
+          ? `<div class="result-segment"><div class="result-time">${segment.range || formatTime(segment.start)}</div><div class="result-phrase">${displayPhrase}</div></div>`
           : `<div class="result-segment"><div class="result-time">無此應援</div><div class="result-phrase"></div></div>`;
         const entryBlock = entry
           ? `<div class="result-entry"><strong>${formatTime(entry.time)}</strong><span>${entry.raw}</span></div>`
@@ -2029,7 +2046,13 @@ function normalizeFetchedSongs(raw) {
   return source
     .map((entry) => parseSongEntry(entry))
     .map((song) => normalizeSong(song))
-    .filter(Boolean);
+    .filter(Boolean)
+    .sort((a, b) => {
+      const ao = Number.isFinite(a.order) ? a.order : Number.MAX_SAFE_INTEGER;
+      const bo = Number.isFinite(b.order) ? b.order : Number.MAX_SAFE_INTEGER;
+      if (ao !== bo) return ao - bo;
+      return (a.title || '').localeCompare(b.title || '');
+    });
 }
 
 function parseSongEntry(entry) {
@@ -2155,6 +2178,7 @@ function parseRankingEntry(entry) {
 
 function normalizeSong(song) {
   if (!song || !song.id) return null;
+  const order = Number(song.order);
   return {
     id: song.id,
     artist: song.artist || '',
@@ -2163,6 +2187,7 @@ function normalizeSong(song) {
     cheerStart: song.cheerStart || '0:00',
     plainVideo: song.plainVideo || '',
     plainStart: song.plainStart || '0:00',
+    order: Number.isFinite(order) ? order : null,
     segments: normalizeSegments(song.segments),
     hints: normalizeHints(song.hints),
     defaultButtons: normalizeHints(song.defaultButtons)

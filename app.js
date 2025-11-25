@@ -1838,18 +1838,21 @@ function normalizedPhraseOptions(phrase) {
 function isChallengerNameAllowed(name) {
 const bannedWords = [
   // —— 中文粗口 —— 
-  '幹', '乾你', '幹你', '淦',
+  '幹', '乾你', '幹你', '淦', '幹你娘', '幹林娘', '幹爆', '幹死',
   '靠北', '靠杯', '靠邀', '靠腰', '靠夭',
   '機掰', '雞掰', '雞巴', '雞八', '機八', '雞扒', 'ㄐㄅ',
-  '他媽', '他媽的', '媽的', '你娘', '尼瑪', '你媽',
-  '王八蛋', '白癡', '智障', '北七', '白爛',
-  '廢物', '垃圾', '低能', '低能兒', '屁孩', '死屁孩',
+  '他媽', '他媽的', '媽的', '你娘', '尼瑪', '你媽', '幹你老師',
+  '王八蛋', '王八', '白癡', '智障', '北七', '白爛', '低能', '低能兒', '三小',
+  '廢物', '垃圾', '屁孩', '死屁孩', '媽寶', '沒用', '蠢貨', '狗雜種', '雜碎', '嘎逼',
   '醜', '醜八怪', '醜爆', '醜死', '長得醜', '你很醜', '丑八怪', '丑死', '醜人', '醜女', '醜男',
 
   // —— 英文粗口 —— 
-  'fuck', 'fuk', 'fk', 'f*ck', 'f**k',
-  'shit', 'sh1t',
-  'bitch', 'asshole', 'dick', 'bastard', 'motherfucker',
+  'fuck', 'fuk', 'fk', 'f*ck', 'f**k', 'fuk u', 'fuck you',
+  'shit', 'sh1t', 'sh*t',
+  'bitch', 'b1tch', 'bi*ch',
+  'asshole', 'ass', 'dumbass',
+  'motherfucker', 'mf', 'mfer',
+  'bastard', 'jerk', 'loser', 'retard',
   'wtf', 'stfu', 'fml', 'ugly', 'so ugly', 'very ugly', 'ugly af',
 
   // —— 簡體粗口 —— 
@@ -1858,21 +1861,23 @@ const bannedWords = [
 
   // —— 性相關（中文） —— 
   '色色', '色', '想色色',
-  '做愛', '做愛', '約砲', '約炮', '約啪',
-  '開房', '床上', '性', '性慾', 
-  '胸部', '奶子', '奶', '大奶',
+  '做愛', '做愛', '性', '打炮', '上床', '情色', '色情',
+  '約砲', '約炮', '約啪',
+  '開房', '床上', '性慾', 
+  '胸部', '奶子', '奶', '奶頭', '大奶',
   '小穴', '下面', '下體',
   '屁股', '屁眼',
   '裸照', '裸', '裸體',
   '調教', '無套', '潮吹', '發情', '性器官',
+  '陰道', '陰莖', '陰蒂', '陰毛', '高潮', '口交', '手交', '幹到', '幹翻', '射你', '撞你', '乳頭', '乳房',
 
   // —— 性相關（英文） —— 
-  'sex', 'sexy', 'nsfw',
-  'horny', 'nude', 'naked',
-  'breast', 'boobs', 'tits',
-  'ass', 'anal',
+  'sex', 'sexy', 'nsfw', 'porn', 'porno', 'pornographic',
+  'horny', 'nude', 'nudity', 'naked',
+  'breast', 'boobs', 'tits', 'boob', 'cock', 'pussy', 'dick',
+  'ass', 'anal', 'blowjob', 'bdsm', 'hentai', 'erotica', 'escort',
   'cum', 'sperm',
-  'porn', 'pornhub', 'bdsm',
+  'pornhub',
 
   // —— 性相關簡體 —— 
   '撩', '開車', '開黃腔',
@@ -1884,7 +1889,16 @@ const bannedWords = [
   'nai', 'ㄋㄞ', '奶奶',
   'luo', 'luo zhao',
   '工口',
-  '18禁', '18x', '成人'
+  '18禁', '18x', '成人',
+
+  // —— 暴力 / 歧視 —— 
+  '殺', '殺死', '殺你', '屠殺', '打死', '打爆', '踹死',
+  '仇恨', '種族歧視', '智障', '殘障', '廢柴', '去死', '活該',
+  '死肥豬', '死胖子', '癡線', '變態', '霸凌', '打你', '毆打',
+
+  // —— 仇恨用語 —— 
+  'nigger', 'nigga', 'chingchong', 'ching chong',
+  'kys', 'kill yourself', 'nazi', 'hitler'
 ];
   const normalized = name.toLowerCase();
   return !bannedWords.some((word) => normalized.includes(word));

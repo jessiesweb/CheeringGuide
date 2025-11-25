@@ -726,6 +726,8 @@ class PracticeController {
     this.autoFinishing = false;
     this.sessionStartSeconds = 0;
     this.currentDefaultButtons = [];
+    this.currentSongLabel = '';
+    this.currentSongId = '';
     this.artistSelect = root.querySelector('#practice-artist');
 
     this.populateSongs();
@@ -841,11 +843,17 @@ class PracticeController {
       this.titleEl.textContent = '尚未選擇歌曲';
       this.player.stop();
       this.renderPresetButtons([]);
+      this.currentSongLabel = '';
+      this.currentSongId = '';
+      this.renderRanking();
       return;
     }
     if (!this.practiceLayout?.classList.contains('active-phase')) {
       this.titleEl.textContent = `${song.artist} - ${song.title}`;
     }
+    this.currentSongLabel = `${song.artist} - ${song.title}`;
+    this.currentSongId = song.id;
+    this.renderRanking();
     this.renderPresetButtons(song.defaultButtons || []);
     try {
       await this.cuePracticeVideo(song);
@@ -1515,6 +1523,7 @@ class PracticeController {
       songLabel: `${session.song.artist} - ${session.song.title}`,
       score: evaluation.score,
       detail: `${evaluation.textMatches}/${evaluation.expectedCount} 命中，錯誤 ${mistakes}（額外 ${evaluation.extras}）`,
+      songId: session.song.id,
       createdAt: Date.now()
     };
     try {
@@ -1542,14 +1551,21 @@ class PracticeController {
 
   renderRanking() {
     const rankings = this.rankings || [];
+    const activeLabel = this.currentSongLabel || '';
+    const activeId = this.currentSongId || '';
+    const filtered = rankings.filter((r) => {
+      if (activeId && r.songId) return r.songId === activeId;
+      if (activeLabel) return r.songLabel === activeLabel;
+      return true;
+    });
     this.rankingList.innerHTML = '';
-    if (!rankings.length) {
+    if (!filtered.length) {
       const li = document.createElement('li');
-      li.textContent = '尚無紀錄';
+      li.textContent = activeLabel ? '此歌曲暫無紀錄' : '尚無紀錄';
       this.rankingList.appendChild(li);
       return;
     }
-    const sorted = rankings.sort((a, b) => b.score - a.score || b.createdAt - a.createdAt);
+    const sorted = filtered.sort((a, b) => b.score - a.score || b.createdAt - a.createdAt);
     let currentRank = 0;
     let previousScore = null;
     let rows = 0;
@@ -1635,7 +1651,7 @@ class PracticeController {
     const rows = normalizedSegments.map((segment) => {
       const idx = entries.findIndex((entry, index) => {
         if (used.has(index)) return false;
-        return isWithinRange(entry.time, segment) && segment.normalizedOptions.includes(entry.normalized);
+        return isWithinRange(entry.time, segment);
       });
       if (idx < 0) {
         return { segment, entry: null, status: 'missing' };
@@ -1645,7 +1661,7 @@ class PracticeController {
       const status = segment.normalizedOptions.includes(entry.normalized) ? 'hit' : 'wrong';
       return { segment, entry, status };
     });
-    // Try to pair remaining entries to missing segments bounded by neighboring matched segments.
+    // Try to pair remaining correct-phrase entries to missing segments bounded by neighboring matched segments.
     const missingIndices = rows
       .map((row, index) => (row.status === 'missing' ? index : -1))
       .filter((idx) => idx >= 0);

@@ -765,6 +765,9 @@ class PracticeController {
     this.currentSongLabel = '';
     this.currentSongId = '';
     this.artistSelect = root.querySelector('#practice-artist');
+    this.lastInsertedHint = '';
+    this.lastInsertPos = 0;
+    this.lastInsertedHint = '';
 
     this.populateSongs();
     this.renderRanking();
@@ -809,7 +812,7 @@ class PracticeController {
     this.hintSuggestions?.addEventListener('click', (event) => {
       const target = event.target;
       if (!(target instanceof HTMLButtonElement)) return;
-      this.insertHint(target.dataset.hint || target.textContent || '');
+      this.insertHint(target.dataset.hint || target.textContent || '', { appendIfNoSpace: true });
     });
     this.guideConfirmBtn?.addEventListener('click', () => this.confirmGuide());
     this.challengerInput.addEventListener('input', () => this.handleChallengerInput());
@@ -964,12 +967,17 @@ class PracticeController {
 
   handleCheerInput() {
     if (this.cheerInput.disabled) return;
-    this.renderHintSuggestions(this.cheerInput.value);
+    const value = this.cheerInput.value || '';
+    if (value.length < this.lastInsertPos) {
+      this.lastInsertPos = value.length;
+    }
+    this.renderHintSuggestions(value);
   }
 
   renderHintSuggestions(query = '') {
     if (!this.hintSuggestions) return;
-    const { token } = this.splitInputToken(query);
+    const text = String(query || '');
+    const token = text.slice(this.lastInsertPos) || text;
     const normalized = token.toLowerCase();
     this.hintSuggestions.innerHTML = '';
     if (!normalized) {
@@ -1053,24 +1061,37 @@ class PracticeController {
   }
 
   splitInputToken(text = '') {
-    const match = String(text).match(/^(.*?)(\S*)$/) || [];
-    return { prefix: match[1] || '', token: match[2] || '' };
+    const value = String(text || '');
+    const pos = Math.min(this.lastInsertPos || 0, value.length);
+    return {
+      prefix: value.slice(0, pos),
+      token: value.slice(pos)
+    };
   }
 
-  insertHint(hint, { append = false, replaceToken = true } = {}) {
+  insertHint(hint, { append = false, replaceToken = true, appendIfNoSpace = false } = {}) {
     if (!hint) return;
     if (this.cheerInput.disabled) return;
     const current = this.cheerInput.value;
+    const { prefix, token } = this.splitInputToken(current);
     if (append) {
       const spacer = current ? ' ' : '';
       this.cheerInput.value = `${current}${spacer}${hint}`;
     } else if (replaceToken) {
-      const { prefix } = this.splitInputToken(current);
-      this.cheerInput.value = `${prefix}${hint}`;
+      if (appendIfNoSpace) {
+        this.cheerInput.value = `${prefix}${hint}`;
+      } else {
+        this.cheerInput.value = `${prefix}${hint}`;
+      }
     } else {
       this.cheerInput.value = hint;
     }
+    this.lastInsertedHint = hint.trim();
+    this.lastInsertPos = this.cheerInput.value.length;
     this.cheerInput.focus();
+    // 確保光標與視窗顯示在文字尾端，避免前段被截掉。
+    this.cheerInput.selectionStart = this.cheerInput.selectionEnd = this.cheerInput.value.length;
+    this.cheerInput.scrollLeft = this.cheerInput.scrollWidth;
     if (this.hintSuggestions) {
       this.hintSuggestions.classList.add('hidden');
       this.resetHintSelection();
@@ -1125,7 +1146,7 @@ class PracticeController {
     const buttons = this.getHintButtons();
     if (this.activeHintIndex < 0 || this.activeHintIndex >= buttons.length) return false;
     const button = buttons[this.activeHintIndex];
-    this.insertHint(button.dataset.hint || button.textContent || '');
+    this.insertHint(button.dataset.hint || button.textContent || '', { appendIfNoSpace: true });
     return true;
   }
 
@@ -1271,6 +1292,7 @@ class PracticeController {
       this.resultEl.textContent = '請先選擇歌曲並開始練習';
       this.setScoreboardVisible(false);
     }
+    this.lastInsertPos = 0;
   }
 
   populateSongs() {

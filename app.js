@@ -8,6 +8,41 @@ const APP_SCRIPT_URL =
 
 const FIREBASE_DB_URL = 'https://cheer-9063f-default-rtdb.firebaseio.com';
 const TIME_TOLERANCE = 0.6; // seconds tolerance when matching entries to segments
+const ARTIST_COPY = {
+  default: {
+    rating: [
+      '應援大師，演唱會誰能比你喊得大聲！ (*`∀´*)/ ',
+      '應援達人，不是你的問題是真的應援太難了對吧ヽ(・ε・*)',
+      '沒事我相信你只是金魚腦了一點(๑•̀ㅂ•́)و✧',
+      '你是不是想偷蹭別人背好的啊？演唱會要開始了欸(‘⊙д-)',
+      '我看你是根本沒有背吧ヽ(#`Д´)ﾉ'
+    ],
+    resultReview:
+      '演唱會要開始了，趕快再來複習一下： <a href="https://www.youtube.com/watch?v=yZMmpkZVdug" target="_blank" rel="noopener noreferrer">TWICE THIS IS FOR 應援空耳合集</a>'
+  },
+  twice: {
+    rating: [
+      '應援大師，演唱會誰能比你喊得大聲！ (*`∀´*)/ ',
+      '應援達人，不是你的問題是真的應援太難了對吧ヽ(・ε・*)',
+      '沒事我相信你只是金魚腦了一點(๑•̀ㅂ•́)و✧',
+      '你是不是想偷蹭別人背好的啊？演唱會要開始了欸(‘⊙д-)',
+      '我看你是根本沒有背吧ヽ(#`Д´)ﾉ'
+    ],
+    resultReview:
+      '演唱會要開始了，趕快再來複習一下： <a href="https://www.youtube.com/watch?v=yZMmpkZVdug" target="_blank" rel="noopener noreferrer">TWICE THIS IS FOR 應援空耳合集</a>'
+  }
+};
+
+function normalizeArtistKey(name = '') {
+  const key = String(name || '').trim().toLowerCase();
+  if (key === 'twice') return 'twice';
+  return key || 'default';
+}
+
+function getArtistCopy(artistName) {
+  const key = normalizeArtistKey(artistName);
+  return ARTIST_COPY[key] || ARTIST_COPY.default;
+}
 
 const FirebaseApi = {
   baseUrl: FIREBASE_DB_URL.replace(/\/$/, ''),
@@ -713,6 +748,7 @@ class PracticeController {
     this.scoreboard = root.querySelector('#scoreboard');
     this.player = new YouTubeDriver(root.querySelector('#video-container'));
     this.songWrapper = root.querySelector('#practice-song-wrapper');
+    this.infoNote = root.querySelector('.info-note');
 
     this.session = null;
     this.pendingTime = null;
@@ -742,6 +778,7 @@ class PracticeController {
     }
     this.handleChallengerInput();
     this.setScoreboardVisible(false);
+    this.updateInfoNote();
     setTimeout(() => this.challengerInput.focus(), 0);
     this.player.onStateChange((event) => {
       const PlayerState = window.YT?.PlayerState;
@@ -816,6 +853,25 @@ class PracticeController {
     this.startButton.disabled = !(hasName && hasSong);
   }
 
+  updateInfoNote(artist, song = null) {
+    if (!this.infoNote) return;
+    if (!artist) {
+      this.infoNote.innerHTML = '';
+      return;
+    }
+    const source = (() => {
+      const link = song?.cheerVideo?.trim();
+      if (link) {
+        const title = song?.videoTitle?.trim() || '此曲目';
+        return `<a href="${link}" target="_blank" rel="noopener noreferrer">${title}</a>`;
+      }
+      const label = song?.videoTitle?.trim() || [song?.artist, song?.title].filter(Boolean).join(' - ');
+      return label || '原曲的應援資料';
+    })();
+    const text = `應援文字可填入空耳，此曲目的應援段落、應援文字、空耳以 YouTube影片 ${source} 為主。`;
+    this.infoNote.innerHTML = `<strong>說明：</strong><p>${text}</p>`;
+  }
+
   async cuePracticeVideo(song, { showLoading = false } = {}) {
     if (!song) return;
     const startSeconds = parseTime(song.plainStart);
@@ -845,6 +901,7 @@ class PracticeController {
       this.renderPresetButtons([]);
       this.currentSongLabel = '';
       this.currentSongId = '';
+      this.updateInfoNote();
       this.renderRanking();
       return;
     }
@@ -853,6 +910,7 @@ class PracticeController {
     }
     this.currentSongLabel = `${song.artist} - ${song.title}`;
     this.currentSongId = song.id;
+    this.updateInfoNote(song.artist, song);
     this.renderRanking();
     this.renderPresetButtons(song.defaultButtons || []);
     try {
@@ -1327,6 +1385,7 @@ class PracticeController {
     this.renderPresetButtons(this.currentDefaultButtons);
     this.showChallengeSummary(challengerName, practiceSong);
     this.setScoreboardVisible(false);
+    this.updateInfoNote(practiceSong.artist, practiceSong);
     const guideSeen = localStorage.getItem('cheer-trainer-guide') === '1';
     await this.launchGuideSequence(guideSeen);
   }
@@ -1507,15 +1566,13 @@ class PracticeController {
     }
     const evaluation = evaluateSession(session);
     const mistakes = Math.max(0, evaluation.mistakes ?? evaluation.expectedCount - evaluation.textMatches + evaluation.extras);
-    const rating = describeAccuracy(evaluation.score);
+    const artistCopy = getArtistCopy(session.song?.artist);
+    const rating = describeAccuracy(evaluation.score, artistCopy);
     this.resultEl.innerHTML = `
     <div class="result-summary">${session.challenger} ${evaluation.textMatches}/${evaluation.expectedCount} 句命中，錯誤 ${mistakes} 句（含多寫 ${evaluation.extras} 句）</div>
       <div class="result-score">正確率 ${evaluation.score}%</div>
       <div class="result-rating">${rating}</div>
-      <div class="result-review">
-        演唱會要開始了，趕快再來複習一下：
-        <a href="https://www.youtube.com/watch?v=yZMmpkZVdug" target="_blank" rel="noopener noreferrer">TWICE THIS IS FOR 應援空耳合集</a>
-      </div>
+      <div class="result-review">${artistCopy.resultReview}</div>
     `;
 
     const rankingEntry = {
@@ -1589,7 +1646,7 @@ class PracticeController {
       const range = parseRange(segment.range || '0:00-0:00');
       return { ...segment, ...range, normalizedOptions: normalizedPhraseOptions(segment.phrase) };
     });
-    const rows = this.buildSegmentComparison(segments, session.entries || []);
+    const rows = buildComparisonRows(segments, session.entries || []);
     if (!rows.length) {
       this.resultDetails.innerHTML = '<p class="muted">此歌曲尚未設定應援時間段。</p>';
       this.resultDetails.classList.remove('hidden');
@@ -1642,84 +1699,7 @@ class PracticeController {
   }
 
   buildSegmentComparison(segments, entries) {
-    const used = new Set();
-    const normalizedSegments = segments.map((segment) => ({
-      ...segment,
-      ...parseRange(segment.range || '0:00-0:00'),
-      normalizedOptions: normalizedPhraseOptions(segment.phrase)
-    }));
-    const rows = normalizedSegments.map((segment) => {
-      const idx = entries.findIndex((entry, index) => {
-        if (used.has(index)) return false;
-        return isWithinRange(entry.time, segment);
-      });
-      if (idx < 0) {
-        return { segment, entry: null, status: 'missing' };
-      }
-      used.add(idx);
-      const entry = entries[idx];
-      const status = segment.normalizedOptions.includes(entry.normalized) ? 'hit' : 'wrong';
-      return { segment, entry, status };
-    });
-    // Try to pair remaining correct-phrase entries to missing segments bounded by neighboring matched segments.
-    const missingIndices = rows
-      .map((row, index) => (row.status === 'missing' ? index : -1))
-      .filter((idx) => idx >= 0);
-    const unmatched = entries
-      .map((entry, index) => ({ entry, index }))
-      .filter(({ index }) => !used.has(index));
-
-    function neighborTimes(rowIndex) {
-      let prevTime = -Infinity;
-      for (let i = rowIndex - 1; i >= 0; i -= 1) {
-        if (rows[i].entry) {
-          prevTime = rows[i].entry.time;
-          break;
-        }
-      }
-      let nextTime = Infinity;
-      for (let i = rowIndex + 1; i < rows.length; i += 1) {
-        if (rows[i].entry) {
-          nextTime = rows[i].entry.time;
-          break;
-        }
-      }
-      return { prevTime, nextTime };
-    }
-
-    missingIndices.forEach((segmentIndex) => {
-      const segment = normalizedSegments[segmentIndex];
-      const { prevTime, nextTime } = neighborTimes(segmentIndex);
-      const candidates = unmatched
-        .filter(({ entry, index }) => {
-          if (used.has(index)) return false;
-          if (!segment.normalizedOptions.includes(entry.normalized)) return false;
-          return entry.time > prevTime && entry.time < nextTime;
-        })
-        .map(({ entry, index }) => ({
-          entry,
-          index,
-          distance: Math.abs(entry.time - segment.start)
-        }))
-        .sort((a, b) => a.distance - b.distance);
-      const picked = candidates[0];
-      if (picked) {
-        used.add(picked.index);
-        rows[segmentIndex].entry = picked.entry;
-        rows[segmentIndex].status = 'wrong';
-      }
-    });
-
-    const extras = entries
-      .map((entry, index) => ({ entry, index }))
-      .filter(({ index }) => !used.has(index))
-      .filter(({ entry }) => !isDuplicateOfUsed(entry, entries, used))
-      .map(({ entry }) => ({ segment: null, entry, status: 'extra' }));
-    return [...rows, ...extras].sort((a, b) => {
-      const aTime = a.segment ? a.segment.start : a.entry.time;
-      const bTime = b.segment ? b.segment.start : b.entry.time;
-      return aTime - bTime;
-    });
+    return buildComparisonRows(segments, entries);
   }
 
   async reportResultToServer(entry) {
@@ -1739,65 +1719,101 @@ class PracticeController {
   }
 }
 
+function buildComparisonRows(segments, entries) {
+  const used = new Set();
+  const normalizedSegments = segments.map((segment) => ({
+    ...segment,
+    ...parseRange(segment.range || '0:00-0:00'),
+    normalizedOptions: normalizedPhraseOptions(segment.phrase)
+  }));
+  const rows = normalizedSegments.map((segment) => {
+    const idx = entries.findIndex((entry, index) => {
+      if (used.has(index)) return false;
+      return isWithinRange(entry.time, segment);
+    });
+    if (idx < 0) {
+      return { segment, entry: null, status: 'missing' };
+    }
+    used.add(idx);
+    const entry = entries[idx];
+    const status = segment.normalizedOptions.includes(entry.normalized) ? 'hit' : 'wrong';
+    return { segment, entry, status };
+  });
+  // Try to pair remaining correct-phrase entries to missing segments bounded by neighboring matched segments.
+  const missingIndices = rows
+    .map((row, index) => (row.status === 'missing' ? index : -1))
+    .filter((idx) => idx >= 0);
+  const unmatched = entries
+    .map((entry, index) => ({ entry, index }))
+    .filter(({ index }) => !used.has(index));
+
+  function neighborTimes(rowIndex) {
+    let prevTime = -Infinity;
+    for (let i = rowIndex - 1; i >= 0; i -= 1) {
+      if (rows[i].entry) {
+        prevTime = rows[i].entry.time;
+        break;
+      }
+    }
+    let nextTime = Infinity;
+    for (let i = rowIndex + 1; i < rows.length; i += 1) {
+      if (rows[i].entry) {
+        nextTime = rows[i].entry.time;
+        break;
+      }
+    }
+    return { prevTime, nextTime };
+  }
+
+  missingIndices.forEach((segmentIndex) => {
+    const segment = normalizedSegments[segmentIndex];
+    const { prevTime, nextTime } = neighborTimes(segmentIndex);
+    const candidates = unmatched
+      .filter(({ entry, index }) => {
+        if (used.has(index)) return false;
+        if (!segment.normalizedOptions.includes(entry.normalized)) return false;
+        return entry.time > prevTime && entry.time < nextTime;
+      })
+      .map(({ entry, index }) => ({
+        entry,
+        index,
+        distance: Math.abs(entry.time - segment.start)
+      }))
+      .sort((a, b) => a.distance - b.distance);
+    const picked = candidates[0];
+    if (picked) {
+      used.add(picked.index);
+      rows[segmentIndex].entry = picked.entry;
+      rows[segmentIndex].status = 'wrong';
+    }
+  });
+
+  const extras = entries
+    .map((entry, index) => ({ entry, index }))
+    .filter(({ index }) => !used.has(index))
+    .filter(({ entry }) => !isDuplicateOfUsed(entry, entries, used))
+    .map(({ entry }) => ({ segment: null, entry, status: 'extra' }));
+  return [...rows, ...extras].sort((a, b) => {
+    const aTime = a.segment ? a.segment.start : a.entry.time;
+    const bTime = b.segment ? b.segment.start : b.entry.time;
+    return aTime - bTime;
+  });
+}
+
 function evaluateSession(session) {
-  const expectedSegments = (session.song.segments || []).map((segment) => ({
+  const segments = (session.song.segments || []).map((segment) => ({
     ...segment,
     ...parseRange(segment.range),
     normalizedOptions: normalizedPhraseOptions(segment.phrase)
   }));
-
-  const entries = session.entries;
-  const usedEntryIndex = new Set();
-  let textMatches = 0;
-
-  // 先嘗試時間內命中
-  expectedSegments.forEach((segment) => {
-    const idx = entries.findIndex((entry, index) => {
-      if (usedEntryIndex.has(index)) return false;
-      return isWithinRange(entry.time, segment) && segment.normalizedOptions.includes(entry.normalized);
-    });
-    if (idx >= 0) {
-      usedEntryIndex.add(idx);
-      textMatches += 1;
-    }
-  });
-
-  // 再嘗試將未使用的正確詞彙配對到缺漏段（遵循結果頁邏輯）
-  const missingIndices = expectedSegments
-    .map((segment, i) => {
-      const hasHit = entries.some((entry, idx) => usedEntryIndex.has(idx) && isWithinRange(entry.time, segment));
-      return hasHit ? -1 : i;
-    })
-    .filter((i) => i >= 0);
-
-  missingIndices.forEach((segIdx) => {
-    const segment = expectedSegments[segIdx];
-    const candidates = entries
-      .map((entry, index) => ({ entry, index }))
-      .filter(({ index }) => !usedEntryIndex.has(index))
-      .filter(({ entry }) => segment.normalizedOptions.includes(entry.normalized));
-    if (!candidates.length) return;
-
-    // 找到與該段落最近的未使用正確詞
-    const best = candidates
-      .map((c) => ({ ...c, distance: Math.abs(c.entry.time - segment.start) }))
-      .sort((a, b) => a.distance - b.distance)[0];
-    if (best) {
-      usedEntryIndex.add(best.index);
-      // 即便是錯位也算作嘗試，命中數不增加，錯誤數由 extras + 未命中計算
-    }
-  });
-
-  const extraEntries = entries
-    .map((entry, index) => ({ entry, index }))
-    .filter(({ index }) => !usedEntryIndex.has(index))
-    .filter(({ entry }) => !isDuplicateOfUsed(entry, entries, usedEntryIndex)).length;
-
-  const expectedCount = expectedSegments.length || 1;
-  const mistakes = expectedCount - textMatches + extraEntries;
+  const rows = buildComparisonRows(segments, session.entries || []);
+  const textMatches = rows.filter((row) => row.status === 'hit').length;
+  const mistakes = rows.filter((row) => row.status === 'wrong' || row.status === 'missing').length;
+  const extras = rows.filter((row) => row.status === 'extra').length;
+  const expectedCount = segments.length || 1;
   const score = Math.max(0, Math.round(((expectedCount - mistakes) / expectedCount) * 100));
 
-  return { score, textMatches, expectedCount, extras: extraEntries, mistakes };
+  return { score, textMatches, expectedCount, extras, mistakes };
 }
 
 function parseRange(rangeText = '0:00-0:00') {
@@ -1838,12 +1854,13 @@ function isWithinRange(time, segment) {
   return entrySec >= start && entrySec <= end;
 }
 
-function describeAccuracy(score) {
-  if (score >= 80) return '應援大師，演唱會誰能比你喊得大聲！ (*`∀´*)/ ';
-  if (score >= 60) return '應援達人，不是你的問題是真的應援太難了對吧ヽ(・ε・*)';
-  if (score >= 40) return '沒事我相信你只是金魚腦了一點(๑•̀ㅂ•́)و✧';
-  if (score >= 20) return '你是不是想偷蹭別人背好的啊？演唱會要開始了欸(‘⊙д-)';
-  return '我看你是根本沒有背吧ヽ(#`Д´)ﾉ';
+function describeAccuracy(score, artistCopy = ARTIST_COPY.default) {
+  const rating = artistCopy.rating || ARTIST_COPY.default.rating;
+  if (score >= 80) return rating[0] || '';
+  if (score >= 60) return rating[1] || '';
+  if (score >= 40) return rating[2] || '';
+  if (score >= 20) return rating[3] || '';
+  return rating[4] || '';
 }
 
 function isDuplicateOfUsed(entry, entries, usedIndices) {
@@ -2200,6 +2217,7 @@ function normalizeSong(song) {
     artist: song.artist || '',
     title: song.title || '',
     cheerVideo: song.cheerVideo || '',
+    videoTitle: song.videoTitle || '',
     cheerStart: song.cheerStart || '0:00',
     plainVideo: song.plainVideo || '',
     plainStart: song.plainStart || '0:00',

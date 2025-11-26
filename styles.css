@@ -338,6 +338,13 @@ main label {
   border-radius: 12px;
   font-size: 0.9rem;
   color: var(--muted);
+  border: 1px solid transparent;
+}
+.info-note:empty {
+  padding: 0;
+  margin: 0;
+  background: transparent;
+  border: 0;
 }
 .info-note strong {
   display: inline-block;

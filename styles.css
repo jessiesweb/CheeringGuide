@@ -481,7 +481,7 @@ main label {
 @media (max-width: 768px) {
   .result-header,
   .result-row {
-    grid-template-columns: minmax(120px, 1fr) minmax(120px, 1fr) 50px;
+    /* grid-template-columns: minmax(120px, 1fr) minmax(120px, 1fr) 50px; */
     gap: 0.5rem;
   }
   .result-mark {
@@ -1110,14 +1110,12 @@ footer {
   text-align: center;
   color: #a4a8b0;
   font-size: 0.8rem;
-  white-space: nowrap;
-  margin: 1.5rem 0;
+  margin: 1.5rem 1rem;
   line-height: 1.4rem;
 }
 footer a{
   color: #a4a8b0;
   font-size: 0.8rem;
-  white-space: nowrap;
   text-decoration: underline;
 }
 

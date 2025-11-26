@@ -1808,8 +1808,8 @@ function evaluateSession(session) {
   }));
   const rows = buildComparisonRows(segments, session.entries || []);
   const textMatches = rows.filter((row) => row.status === 'hit').length;
-  const mistakes = rows.filter((row) => row.status === 'wrong' || row.status === 'missing').length;
   const extras = rows.filter((row) => row.status === 'extra').length;
+  const mistakes = rows.filter((row) => row.status !== 'hit').length;
   const expectedCount = segments.length || 1;
   const score = Math.max(0, Math.round(((expectedCount - mistakes) / expectedCount) * 100));
 

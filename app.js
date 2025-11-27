@@ -968,9 +968,8 @@ class PracticeController {
   handleCheerInput() {
     if (this.cheerInput.disabled) return;
     const value = this.cheerInput.value || '';
-    if (value.length < this.lastInsertPos) {
-      this.lastInsertPos = value.length;
-    }
+    const tail = this.splitTailToken(value);
+    this.lastInsertPos = tail.prefix.length;
     this.renderHintSuggestions(value);
   }
 

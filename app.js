@@ -1695,7 +1695,7 @@ class PracticeController {
       </div>
     `;
     const body = rows
-      .map(({ segment, entry, status }) => {
+      .map(({ segment, entry, status, timeMatched }) => {
         const displayPhrase = (() => {
           if (!segment) return '';
           const raw = segment.phrase;
@@ -1721,7 +1721,7 @@ class PracticeController {
           : '<div class="result-entry"><span class="muted">未輸入</span></div>';
         const mark = status === 'hit' ? '✓' : '✕';
         return `
-          <div class="result-row ${status}">
+          <div class="result-row ${status} ${timeMatched === false ? 'time-off' : 'time-on'}">
             ${segmentBlock}
             ${entryBlock}
             <div class="result-mark">${mark}</div>
@@ -1805,12 +1805,12 @@ function buildComparisonRows(segments, entries) {
       return isWithinRange(entry.time, segment);
     });
     if (idx < 0) {
-      return { segment, entry: null, status: 'missing' };
+      return { segment, entry: null, status: 'missing', timeMatched: false };
     }
     used.add(idx);
     const entry = entries[idx];
     const status = segment.normalizedOptions.includes(entry.normalized) ? 'hit' : 'wrong';
-    return { segment, entry, status };
+    return { segment, entry, status, timeMatched: true };
   });
   // Try to pair remaining correct-phrase entries to missing segments bounded by neighboring matched segments.
   const missingIndices = rows
@@ -1858,6 +1858,7 @@ function buildComparisonRows(segments, entries) {
       used.add(picked.index);
       rows[segmentIndex].entry = picked.entry;
       rows[segmentIndex].status = 'wrong';
+      rows[segmentIndex].timeMatched = isWithinRange(picked.entry.time, segment);
     }
   });
 
@@ -1865,7 +1866,7 @@ function buildComparisonRows(segments, entries) {
     .map((entry, index) => ({ entry, index }))
     .filter(({ index }) => !used.has(index))
     .filter(({ entry }) => !isDuplicateOfUsed(entry, entries, used))
-    .map(({ entry }) => ({ segment: null, entry, status: 'extra' }));
+    .map(({ entry }) => ({ segment: null, entry, status: 'extra', timeMatched: false }));
   return [...rows, ...extras].sort((a, b) => {
     const aTime = a.segment ? a.segment.start : a.entry.time;
     const bTime = b.segment ? b.segment.start : b.entry.time;

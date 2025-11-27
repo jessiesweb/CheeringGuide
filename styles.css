@@ -452,15 +452,22 @@ main label {
   color: var(--muted);
 }
 
-.result-row.missing .result-phrase,
-.result-row.wrong .result-phrase,
-.result-row.extra .result-phrase {
+.result-row.wrong.time-off .result-entry strong {
+  color: #ff5f56;
+}
+.result-row.wrong.time-off .result-entry span {
+  color: var(--muted);
+}
+.result-row.wrong.time-on .result-entry strong {
   color: var(--primary);
 }
-
-.result-row.missing .result-time,
-.result-row.wrong .result-time,
-.result-row.extra .result-time {
+.result-row.wrong.time-on .result-entry span {
+  color: #ff5f56;
+}
+.result-row.extra .result-entry strong,
+.result-row.extra .result-entry span,
+.result-row.missing .result-entry strong,
+.result-row.missing .result-entry span {
   color: #ff5f56;
 }
 

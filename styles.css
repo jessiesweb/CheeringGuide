@@ -455,6 +455,12 @@ main label {
 .result-row.missing .result-phrase,
 .result-row.wrong .result-phrase,
 .result-row.extra .result-phrase {
+  color: var(--primary);
+}
+
+.result-row.missing .result-time,
+.result-row.wrong .result-time,
+.result-row.extra .result-time {
   color: #ff5f56;
 }
 
@@ -537,6 +543,123 @@ main label {
   gap: 0.25rem;
 }
 
+.combo-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.combo-rows {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-start;
+  overflow-x: auto;
+  padding-bottom: 0.25rem;
+}
+
+.combo-col {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  flex: 0 0 auto;
+}
+
+.combo-cell {
+  display: flex;
+  gap: 0.25rem;
+  align-items: stretch;
+  background: #f5f7ff;
+  padding: 0.35rem 0.4rem;
+  border-radius: 8px;
+}
+
+.combo-cell input {
+  width: 110px;
+  border-radius: 6px;
+}
+
+.combo-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.combo-buttons button {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  line-height: 1;
+}
+
+.combo-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  justify-content: flex-start;
+}
+
+.combo-toggle {
+  position: fixed;
+  right: 0rem;
+  top: 50%;
+  z-index: 4001;
+  transform: translateY(-50%);
+  writing-mode: vertical-rl;
+  letter-spacing: 0.1em;
+  padding: 1rem 0.6rem;
+  width: 48px;
+  text-align: center;
+  background: #fff;
+  border: 1px solid var(--primary);
+  border-radius: 12px 0 0 12px;
+  box-shadow: -6px 6px 20px rgba(0, 0, 0, 0.1);
+  cursor: pointer;
+  color: var(--primary);
+}
+
+.combo-panel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  width: min(90vw, 50vw);
+  height: 100%;
+  background: #fff;
+  box-shadow: -12px 0 35px rgba(0, 0, 0, 0.12);
+  padding: 1.2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  transform: translateX(100%);
+  transition: transform 0.2s ease;
+  z-index: 4600;
+  pointer-events: none;
+}
+
+.combo-panel.open {
+  transform: translateX(0);
+  pointer-events: auto;
+}
+
+.combo-panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.combo-panel h3 {
+  margin: 0;
+}
+
+#combo-close {
+  background: transparent;
+  border: none;
+  color: var(--primary);
+  font-size: 1.2rem;
+  line-height: 1;
+  padding: 0.15rem 0.35rem;
+}
+
 .list-editor input {
   flex: 1;
 }
@@ -609,7 +732,7 @@ main label {
   display: block;
 }
 
-.practice-layout.show-results > *:not(#scoreboard):not(#ranking-card):not(.feedback-block) {
+.practice-layout.show-results > *:not(#scoreboard):not(#ranking-card):not(.feedback-block):not(.result-actions) {
   display: none !important;
 }
 
@@ -661,6 +784,12 @@ main label {
   justify-content: center;
   align-items: center;
   white-space: nowrap;
+  
+}
+
+.result-actions button {
+  border: #fff solid 1px;
+  flex: 1;
 }
 
 #start-practice,
@@ -702,6 +831,17 @@ main label {
   font-weight: 700;
   color: var(--primary);
   text-align: center;
+}
+
+.result-actions {
+  display: none;
+  justify-content: center;
+  gap: 0.75rem;
+  margin-top: 1.25rem;
+}
+
+.practice-layout.show-results .result-actions {
+  display: flex;
 }
 
 .result-rating {

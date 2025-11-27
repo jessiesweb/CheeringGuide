@@ -746,6 +746,8 @@ class PracticeController {
     this.resultDetails = root.querySelector('#result-details');
     this.rankingList = root.querySelector('#ranking-list');
     this.scoreboard = root.querySelector('#scoreboard');
+    this.nextSongBtn = root.querySelector('#next-song');
+    this.backToSelectBtn = root.querySelector('#back-to-select');
     this.player = new YouTubeDriver(root.querySelector('#video-container'));
     this.songWrapper = root.querySelector('#practice-song-wrapper');
     this.infoNote = root.querySelector('.info-note');
@@ -767,7 +769,6 @@ class PracticeController {
     this.artistSelect = root.querySelector('#practice-artist');
     this.lastInsertedHint = '';
     this.lastInsertPos = 0;
-    this.lastInsertedHint = '';
 
     this.populateSongs();
     this.renderRanking();
@@ -827,6 +828,8 @@ class PracticeController {
       const text = target.dataset.preset || target.textContent || '';
       this.handlePresetClick(text);
     });
+    this.nextSongBtn?.addEventListener('click', () => this.goToNextSong());
+    this.backToSelectBtn?.addEventListener('click', () => this.resetToSongSelect());
   }
 
   bindShortcuts() {
@@ -1086,7 +1089,9 @@ class PracticeController {
       const spacer = current ? ' ' : '';
       this.cheerInput.value = `${current}${spacer}${hint}`;
     } else if (appendIfNoSpace) {
-      this.cheerInput.value = `${base}${hint}`;
+      const tail = this.splitTailToken(current);
+      const prefix = tail.prefix || '';
+      this.cheerInput.value = `${prefix}${hint} `;
     } else if (replaceToken) {
       const { prefix } = this.splitInputToken(current);
       this.cheerInput.value = `${prefix}${hint}`;
@@ -1300,6 +1305,7 @@ class PracticeController {
       this.setScoreboardVisible(false);
     }
     this.lastInsertPos = 0;
+    this.lastInsertedHint = '';
   }
 
   populateSongs() {
@@ -1727,6 +1733,44 @@ class PracticeController {
     this.resultDetails.classList.remove('hidden');
   }
 
+  goToNextSong() {
+    const songs = SongStore.getSongs();
+    if (!songs.length) return;
+    const currentId = this.currentSongId || this.songSelect?.value;
+    const currentSong = songs.find((s) => s.id === currentId) || songs[0];
+    if (!currentSong) return;
+    const sameArtist = songs
+      .filter((s) => s.artist === currentSong.artist)
+      .sort((a, b) => {
+        const ao = Number.isFinite(Number(a.order)) ? Number(a.order) : Number.MAX_SAFE_INTEGER;
+        const bo = Number.isFinite(Number(b.order)) ? Number(b.order) : Number.MAX_SAFE_INTEGER;
+        if (ao !== bo) return ao - bo;
+        return (a.title || '').localeCompare(b.title || '');
+      });
+    if (!sameArtist.length) return;
+    const idx = sameArtist.findIndex((s) => s.id === currentSong.id);
+    const next = sameArtist[(idx + 1) % sameArtist.length];
+    if (this.songSelect) this.songSelect.value = next.id;
+    this.currentSongId = next.id;
+    this.currentSongLabel = `${next.artist} - ${next.title}`;
+    this.practiceLayout?.classList.remove('show-results');
+    this.practiceLayout?.classList.remove('active-phase');
+    this.handleSongSelectionChange();
+    this.startPractice();
+  }
+
+  resetToSongSelect() {
+    this.practiceLayout?.classList.remove('active-phase', 'show-results');
+    this.challengeForm?.classList.remove('hidden');
+    this.challengeSummary?.classList.add('hidden');
+    if (this.resultDetails) {
+      this.resultDetails.classList.add('hidden');
+      this.resultDetails.innerHTML = '';
+    }
+    this.resetPracticeUi({ preserveResult: false });
+    this.setScoreboardVisible(false);
+  }
+
   buildSegmentComparison(segments, entries) {
     return buildComparisonRows(segments, entries);
   }
@@ -2002,9 +2046,8 @@ function requiresManualPlayback() {
 
 function normalizeText(text) {
   return text
-    .toLowerCase() 
-    .replace(/[^\w\s\u4e00-\u9fff]+/g, ' ')
-    .replace(/\s+/g, ' ')
+    .toLowerCase()
+    .replace(/[^\w\u4e00-\u9fff]+/g, '')
     .trim();
 }
 

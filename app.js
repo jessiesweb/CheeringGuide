@@ -1069,20 +1069,28 @@ class PracticeController {
     };
   }
 
+  splitTailToken(text = '') {
+    const value = String(text || '');
+    const match = value.match(/^(.*\s)(\S*)$/);
+    if (match) {
+      return { prefix: match[1] || '', token: match[2] || '' };
+    }
+    return { prefix: '', token: value };
+  }
+
   insertHint(hint, { append = false, replaceToken = true, appendIfNoSpace = false } = {}) {
     if (!hint) return;
     if (this.cheerInput.disabled) return;
     const current = this.cheerInput.value;
-    const { prefix, token } = this.splitInputToken(current);
+    const base = this.lastInsertPos ? current.slice(0, this.lastInsertPos) : '';
     if (append) {
       const spacer = current ? ' ' : '';
       this.cheerInput.value = `${current}${spacer}${hint}`;
+    } else if (appendIfNoSpace) {
+      this.cheerInput.value = `${base}${hint}`;
     } else if (replaceToken) {
-      if (appendIfNoSpace) {
-        this.cheerInput.value = `${prefix}${hint}`;
-      } else {
-        this.cheerInput.value = `${prefix}${hint}`;
-      }
+      const { prefix } = this.splitInputToken(current);
+      this.cheerInput.value = `${prefix}${hint}`;
     } else {
       this.cheerInput.value = hint;
     }

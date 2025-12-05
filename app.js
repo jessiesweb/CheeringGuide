@@ -1,3 +1,31 @@
+
+
+function track(event_name) {
+  // alert(event_name)
+  gtag('event', event_name)
+}
+
+function trackClick(eventName) {
+  const name = String(eventName || '')
+    .trim()
+    .replace(/\s+/g, '_');
+  if (!name) return;
+  try {
+    track(name);
+  } catch (err) {
+    console.warn('track failed', err);
+  }
+}
+
+function bindTrackedClick(element, eventName, handler) {
+  if (!element) return;
+  element.addEventListener('click', (event) => {
+    trackClick(eventName);
+    handler?.(event);
+  });
+}
+
+
 const STORAGE_KEYS = {
   RANKINGS: 'cheer-trainer-rankings',
   CHALLENGER: 'cheer-trainer-challenger',
@@ -800,38 +828,40 @@ class PracticeController {
   }
 
   bindEvents() {
-    this.startButton.addEventListener('click', () => this.startPractice());
+    bindTrackedClick(this.startButton, 'practice_start', () => this.startPractice());
     this.artistSelect?.addEventListener('change', () => this.handleArtistChange());
     this.songSelect?.addEventListener('change', () => this.handleSongSelectionChange());
-    this.cheerButton.addEventListener('click', () => this.armCheerInput());
-    this.submitBtn.addEventListener('click', () => this.finishPractice());
+    bindTrackedClick(this.cheerButton, 'cheer_button', () => this.armCheerInput());
+    bindTrackedClick(this.submitBtn, 'practice_submit', () => this.finishPractice());
     this.cheerInput.addEventListener('keydown', (event) => this.handleCheerKeyDown(event));
     this.cheerInput.addEventListener('input', () => this.handleCheerInput());
-    this.commitButton.addEventListener('click', () => {
+    bindTrackedClick(this.commitButton, 'cheer_commit', () => {
       this.player.pause();
       this.commitEntry();
     });
-    this.cancelButton?.addEventListener('click', () => this.cancelCheerEntry());
+    bindTrackedClick(this.cancelButton, 'cheer_cancel', () => this.cancelCheerEntry());
     this.hintSuggestions?.addEventListener('click', (event) => {
       const target = event.target;
       if (!(target instanceof HTMLButtonElement)) return;
+      trackClick('hint_suggestion_click');
       this.insertHint(target.dataset.hint || target.textContent || '', { appendIfNoSpace: true });
     });
-    this.guideConfirmBtn?.addEventListener('click', () => this.confirmGuide());
+    bindTrackedClick(this.guideConfirmBtn, 'guide_confirm', () => this.confirmGuide());
     this.challengerInput?.addEventListener('input', () => this.handleChallengerInput());
-    this.confirmOkBtn?.addEventListener('click', () => this.resolveConfirmDialog(true));
-    this.confirmCancelBtn?.addEventListener('click', () => this.handleCancelResult());
-    this.nameWarningOkBtn?.addEventListener('click', () => this.hideNameWarning());
-    this.mobileCountdownBtn?.addEventListener('click', () => this.handleMobileCountdownStart());
-    this.feedbackSubmitBtn?.addEventListener('click', () => this.submitFeedback());
+    bindTrackedClick(this.confirmOkBtn, 'confirm_end_practice', () => this.resolveConfirmDialog(true));
+    bindTrackedClick(this.confirmCancelBtn, 'confirm_cancel_end', () => this.handleCancelResult());
+    bindTrackedClick(this.nameWarningOkBtn, 'name_warning_ack', () => this.hideNameWarning());
+    bindTrackedClick(this.mobileCountdownBtn, 'mobile_countdown_start', () => this.handleMobileCountdownStart());
+    bindTrackedClick(this.feedbackSubmitBtn, 'feedback_submit', () => this.submitFeedback());
     this.presetButtons?.addEventListener('click', (event) => {
       const target = event.target;
       if (!(target instanceof HTMLButtonElement)) return;
       const text = target.dataset.preset || target.textContent || '';
+      trackClick('preset_button_click');
       this.handlePresetClick(text);
     });
-    this.nextSongBtn?.addEventListener('click', () => this.goToNextSong());
-    this.backToSelectBtn?.addEventListener('click', () => this.resetToSongSelect());
+    bindTrackedClick(this.nextSongBtn, 'next_song', () => this.goToNextSong());
+    bindTrackedClick(this.backToSelectBtn, 'back_to_select', () => this.resetToSongSelect());
   }
 
   bindShortcuts() {

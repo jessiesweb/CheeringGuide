@@ -582,7 +582,6 @@ main label {
 
 .combo-cell input {
   width: 110px;
-  border-radius: 6px;
 }
 
 .combo-buttons {
@@ -603,6 +602,119 @@ main label {
   gap: 0.5rem;
   flex-wrap: wrap;
   justify-content: flex-start;
+}
+
+.segment-builder .segments-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.segment-row {
+  display: flex;
+  gap: 0.5rem;
+  padding: 0.5rem;
+  border: 1px solid #e4e9f5;
+  border-radius: 10px;
+  background: #f8faff;
+  overflow-x: auto;
+}
+
+.segment-time-block {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  align-items: flex-start;
+}
+
+.segment-time {
+  width: 90px;
+  min-width: 90px;
+  margin: 0.35rem 0.4rem;
+  border-radius: 10px;
+  overflow-x: auto;
+  white-space: nowrap;
+}
+
+.segment-time.readonly {
+  padding: 0.4rem 0.5rem;
+  border: 1px solid #e4e9f5;
+  border-radius: 8px;
+  background: #f5f7ff;
+}
+
+.segment-time.hidden-time {
+  display: none;
+}
+
+.segment-time-actions {
+  display: flex;
+  gap: 0.25rem;
+}
+
+.segment-time-actions .ghost {
+  padding: 0.2rem 0.5rem;
+}
+
+.segment-cols {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  align-items: flex-start;
+  flex: 1;
+  overflow-x: auto;
+  flex-wrap: nowrap;
+}
+
+.english-only-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 0.15rem 0;
+}
+
+.english-only-item {
+  padding: 0.35rem 0.45rem;
+  background: #f5f7ff;
+  border: 1px solid #e4e9f5;
+  border-radius: 8px;
+  min-width: 180px;
+}
+
+.segment-row input.text-only {
+  border: none;
+  background: transparent;
+  padding-left: 0;
+  padding-right: 0;
+  cursor: default;
+}
+
+.segment-row .add-col,
+.segment-row .remove-row {
+  height: 42px;
+  align-self: center;
+  flex: 0 0 auto;
+}
+
+.answer-block {
+  display: inline-flex;
+  gap: 0.4rem;
+  align-items: flex-start;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  white-space: nowrap;
+  flex: 0 0 auto;
+}
+
+.answer-divider {
+  width: 100%;
+  height: 1px;
+  background: #e9edf7;
+  margin: 0.1rem 0;
+}
+
+.segment-actions {
+  margin-top: 0.5rem;
 }
 
 .combo-toggle {
@@ -687,6 +799,11 @@ main label {
 }
 .bulk-field small {
   color: var(--muted);
+}
+
+.bulk-field .raw-actions {
+  display: flex;
+  margin-top: 0.25rem;
 }
 
 .form-actions {
@@ -1300,6 +1417,12 @@ footer a{
 }
 .ranking-list .regular-rank {
   color: var(--muted);
+}
+
+.ranking-list .latest-rank {
+  color: var(--primary);
+  font-weight: 700;
+  font-size: 1.05rem;
 }
 
 .video-note {

@@ -1,6 +1,7 @@
 const STORAGE_KEYS = {
   RANKINGS: 'cheer-trainer-rankings',
-  CHALLENGER: 'cheer-trainer-challenger'
+  CHALLENGER: 'cheer-trainer-challenger',
+  LOCAL_HISTORY: 'cheer-trainer-history'
 };
 
 const APP_SCRIPT_URL =
@@ -759,7 +760,8 @@ class PracticeController {
     this.activeHintIndex = -1;
     this.videoEnded = false;
     this.confirmResolver = null;
-    this.rankings = [];
+    this.localHistory = this.loadLocalHistory();
+    this.rankings = this.localHistory;
     this.sessionStartSeconds = 0;
     this.autoFinishing = false;
     this.sessionStartSeconds = 0;
@@ -777,13 +779,13 @@ class PracticeController {
     this.bindShortcuts();
     this.resetPracticeUi();
     const savedName = UserPrefs.loadChallenger();
-    if (savedName) {
+    if (savedName && this.challengerInput) {
       this.challengerInput.value = savedName;
     }
     this.handleChallengerInput();
     this.setScoreboardVisible(false);
     this.updateInfoNote();
-    setTimeout(() => this.challengerInput.focus(), 0);
+    if (this.challengerInput) setTimeout(() => this.challengerInput.focus(), 0);
     this.player.onStateChange((event) => {
       const PlayerState = window.YT?.PlayerState;
       if (!PlayerState) return;
@@ -816,7 +818,7 @@ class PracticeController {
       this.insertHint(target.dataset.hint || target.textContent || '', { appendIfNoSpace: true });
     });
     this.guideConfirmBtn?.addEventListener('click', () => this.confirmGuide());
-    this.challengerInput.addEventListener('input', () => this.handleChallengerInput());
+    this.challengerInput?.addEventListener('input', () => this.handleChallengerInput());
     this.confirmOkBtn?.addEventListener('click', () => this.resolveConfirmDialog(true));
     this.confirmCancelBtn?.addEventListener('click', () => this.handleCancelResult());
     this.nameWarningOkBtn?.addEventListener('click', () => this.hideNameWarning());
@@ -854,9 +856,8 @@ class PracticeController {
   }
 
   updateStartButtonState() {
-    const hasName = Boolean(this.challengerInput?.value.trim());
     const hasSong = Boolean(this.songSelect?.value);
-    this.startButton.disabled = !(hasName && hasSong);
+    this.startButton.disabled = !hasSong;
   }
 
   updateInfoNote(artist, song = null) {
@@ -1176,7 +1177,7 @@ class PracticeController {
   }
 
   showChallengeSummary(name, song) {
-    if (this.summaryNameEl) this.summaryNameEl.textContent = name;
+    if (this.summaryNameEl) this.summaryNameEl.textContent = name || '';
     if (this.summarySongEl) this.summarySongEl.textContent = `${song.artist} - ${song.title}`;
     this.challengeForm?.classList.add('hidden');
     this.challengeSummary?.classList.remove('hidden');
@@ -1371,15 +1372,7 @@ class PracticeController {
   }
 
   async startPractice() {
-    const challengerName = this.challengerInput.value.trim();
-    if (!challengerName) {
-      toast('請輸入挑戰者名稱', 'error');
-      return;
-    }
-    if (!isChallengerNameAllowed(challengerName)) {
-      this.showNameWarning();
-      return;
-    }
+    const challengerName = this.challengerInput?.value.trim() || '匿名挑戰者';
     const songId = this.songSelect.value;
     const song = SongStore.findSong(songId);
     if (!song) {
@@ -1584,6 +1577,27 @@ class PracticeController {
     this.cheerButton.classList.add('pulse');
   }
 
+  loadLocalHistory() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEYS.LOCAL_HISTORY);
+      if (!raw) return [];
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) return parsed;
+      return [];
+    } catch (err) {
+      console.warn('讀取本地歷史失敗', err);
+      return [];
+    }
+  }
+
+  saveLocalHistory() {
+    try {
+      localStorage.setItem(STORAGE_KEYS.LOCAL_HISTORY, JSON.stringify(this.localHistory || []));
+    } catch (err) {
+      console.warn('儲存本地歷史失敗', err);
+    }
+  }
+
   async finishPractice({ auto = false } = {}) {
     if (!this.session) {
       if (!auto) toast('請先開始練習', 'error');
@@ -1604,7 +1618,7 @@ class PracticeController {
     const artistCopy = getArtistCopy(session.song?.artist);
     const rating = describeAccuracy(evaluation.score, artistCopy);
     this.resultEl.innerHTML = `
-    <div class="result-summary">${session.challenger} ${evaluation.textMatches}/${evaluation.expectedCount} 句命中，錯誤 ${mistakes} 句（含多寫 ${evaluation.extras} 句）</div>
+    <div class="result-summary">${evaluation.textMatches}/${evaluation.expectedCount} 句命中，錯誤 ${mistakes} 句（含多寫 ${evaluation.extras} 句）</div>
       <div class="result-score">正確率 ${evaluation.score}%</div>
       <div class="result-rating">${rating}</div>
       <div class="result-review">${artistCopy.resultReview}</div>
@@ -1618,18 +1632,15 @@ class PracticeController {
       songId: session.song.id,
       createdAt: Date.now()
     };
-    try {
-      setLoading(true, '上傳結果中...');
-      const remoteRankings = await this.reportResultToServer(rankingEntry);
-      if (Array.isArray(remoteRankings) && remoteRankings.length) {
-        this.rankings = remoteRankings;
-      }
-    } catch (err) {
-      console.error('回報成績失敗', err);
-      toast('上傳排行失敗', 'error');
-    } finally {
-      setLoading(false);
-    }
+    // 本地歷史：同名同歌的上一筆，用於計算進步幅度
+    const previous = [...(this.localHistory || [])]
+      .filter((r) => r.name === rankingEntry.name && r.songId === rankingEntry.songId)
+      .sort((a, b) => b.createdAt - a.createdAt)[0];
+    rankingEntry.improvement =
+      previous && typeof previous.score === 'number' ? rankingEntry.score - previous.score : 0;
+    this.localHistory = [...(this.localHistory || []), rankingEntry];
+    this.saveLocalHistory();
+    this.rankings = this.localHistory;
     this.renderRanking();
     toast('結果已紀錄', 'success');
     this.setScoreboardVisible(true);
@@ -1657,19 +1668,42 @@ class PracticeController {
       this.rankingList.appendChild(li);
       return;
     }
-    const sorted = filtered.sort((a, b) => b.score - a.score || b.createdAt - a.createdAt);
-    let currentRank = 0;
-    let previousScore = null;
+    const sorted = filtered
+      .slice()
+      .sort((a, b) => b.createdAt - a.createdAt)
+      .slice(0, 5);
+    const latestId = sorted[0]?.createdAt;
+    const history = this.localHistory || [];
     let rows = 0;
-    for (let i = 0; i < sorted.length && rows < 10; i += 1) {
+    for (let i = 0; i < sorted.length && rows < 5; i += 1) {
       const record = sorted[i];
-      if (record.score !== previousScore) {
-        currentRank = currentRank ? currentRank + 1 : 1;
-        previousScore = record.score;
-      }
+      const prev = history
+        .filter(
+          (r) =>
+            r !== record &&
+            r.name === record.name &&
+            ((record.songId && r.songId === record.songId) || r.songLabel === record.songLabel) &&
+            r.createdAt < record.createdAt
+        )
+        .sort((a, b) => b.createdAt - a.createdAt)[0];
+      const diff =
+        prev && typeof prev.score === 'number' ? Math.round(record.score - prev.score) : 0;
+      const diffText = prev
+        ? diff === 0
+          ? '持平'
+          : diff > 0
+            ? `上升 +${diff}%`
+            : `下降 ${Math.abs(diff)}%`
+        : '首次';
+      const detail = record.detail || '';
+      const scoreText = `${record.score || 0}% ${detail ? `(${detail})` : ''}`;
       const row = document.createElement('div');
-      row.innerHTML = `<span>${currentRank}</span><span>${record.name}</span><span>${record.score}%</span>`;
-      row.classList.add(currentRank <= 3 ? 'top-rank' : 'regular-rank');
+      const dateText = record.createdAt
+        ? new Date(record.createdAt).toLocaleDateString()
+        : '';
+      row.innerHTML = `<span>${dateText}</span><span>${scoreText}</span><span>${diffText}</span>`;
+      row.classList.add('regular-rank');
+      if (record.createdAt === latestId) row.classList.add('latest-rank');
       this.rankingList.appendChild(row);
       rows += 1;
     }
@@ -1698,20 +1732,14 @@ class PracticeController {
       .map(({ segment, entry, status, timeMatched }) => {
         const displayPhrase = (() => {
           if (!segment) return '';
-          const raw = segment.phrase;
-          const tokens = Array.isArray(raw)
-            ? raw
-            : String(raw || '')
-                .split(',')
-                .map((t) => t.trim())
-                .filter(Boolean);
+          const tokens = buildPhraseTokens(segment.phrase);
           if (entry && tokens.length) {
             const normalizedTokens = tokens.map((t) => normalizeText(t));
             const matchedIdx = normalizedTokens.findIndex((norm) => norm === entry.normalized);
             if (matchedIdx >= 0) return tokens[matchedIdx];
           }
           if (tokens.length) return tokens[0];
-          return raw || '';
+          return segment.phrase || '';
         })();
         const segmentBlock = segment
           ? `<div class="result-segment"><div class="result-time">${segment.range || formatTime(segment.start)}</div><div class="result-phrase">${displayPhrase}</div></div>`
@@ -1794,21 +1822,34 @@ class PracticeController {
 
 function buildComparisonRows(segments, entries) {
   const used = new Set();
-  const normalizedSegments = segments.map((segment) => ({
-    ...segment,
-    ...parseRange(segment.range || '0:00-0:00'),
-    normalizedOptions: normalizedPhraseOptions(segment.phrase)
-  }));
+  const normalizedSegments = segments
+    .map((segment) => ({
+      ...segment,
+      ...parseRange(segment.range || '0:00-0:00'),
+      normalizedOptions: normalizedPhraseOptions(segment.phrase)
+    }))
+    .sort((a, b) => a.start - b.start);
   const rows = normalizedSegments.map((segment) => {
-    const idx = entries.findIndex((entry, index) => {
-      if (used.has(index)) return false;
-      return isWithinRange(entry.time, segment);
-    });
-    if (idx < 0) {
+    const inRange = entries
+      .map((entry, index) => ({ entry, index }))
+      .filter(({ entry, index }) => !used.has(index) && isWithinRange(entry.time, segment))
+      .sort((a, b) => a.entry.time - b.entry.time);
+
+    let picked = null;
+    for (const candidate of inRange) {
+      if (segment.normalizedOptions.includes(candidate.entry.normalized)) {
+        picked = candidate;
+        break;
+      }
+    }
+    if (!picked) picked = inRange[0];
+
+    if (!picked) {
       return { segment, entry: null, status: 'missing', timeMatched: false };
     }
-    used.add(idx);
-    const entry = entries[idx];
+
+    used.add(picked.index);
+    const entry = picked.entry;
     const status = segment.normalizedOptions.includes(entry.normalized) ? 'hit' : 'wrong';
     return { segment, entry, status, timeMatched: true };
   });
@@ -1950,12 +1991,35 @@ function isDuplicateOfUsed(entry, entries, usedIndices) {
 
 function normalizedPhraseOptions(phrase) {
   if (!phrase && phrase !== 0) return [''];
-  if (Array.isArray(phrase)) {
-    return phrase.map((item) => normalizeText(String(item))).filter(Boolean);
+  const tokens = buildPhraseTokens(phrase);
+  return tokens.map((t) => normalizeText(t)).filter(Boolean);
+}
+
+function cartesian(arrays = []) {
+  return arrays.reduce(
+    (acc, col) => acc.flatMap((prefix) => col.map((c) => `${prefix}${c}`)),
+    ['']
+  );
+}
+
+function buildPhraseTokens(raw) {
+  if (Array.isArray(raw)) {
+    const first = raw[0];
+    const rest = raw.slice(1);
+    const isMatrix = Array.isArray(first) && first.every((c) => Array.isArray(c));
+    if (isMatrix) {
+      const cols = first.map((col) =>
+        (Array.isArray(col) ? col : [col]).map((v) => String(v || ''))
+      );
+      const combos = cartesian(cols);
+      const extras = rest.map((item) => String(item || '').trim()).filter(Boolean);
+      return [...combos, ...extras];
+    }
+    return raw.map((item) => String(item || ''));
   }
-  return String(phrase)
+  return String(raw || '')
     .split(',')
-    .map((part) => normalizeText(part))
+    .map((part) => part.trim())
     .filter(Boolean);
 }
 
@@ -2355,7 +2419,8 @@ function main() {
       practiceController.populateSongs();
       const forcedSettings = document.body?.dataset?.forceSettings === '1';
       if (!forcedSettings) {
-        UserPrefs.saveChallenger(practiceController.challengerInput.value.trim());
+        const nameVal = practiceController.challengerInput?.value?.trim() || '';
+        if (nameVal) UserPrefs.saveChallenger(nameVal);
         practiceController.handleChallengerInput();
       }
     })

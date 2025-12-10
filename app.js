@@ -1,7 +1,7 @@
 
 
 function track(event_name) {
-  // alert(event_name)
+  console.log(event_name)
   gtag('event', event_name)
 }
 
@@ -15,6 +15,13 @@ function trackClick(eventName) {
   } catch (err) {
     console.warn('track failed', err);
   }
+}
+
+function normalizeTrackToken(value) {
+  return String(value || '')
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, '');
 }
 
 function bindTrackedClick(element, eventName, handler) {
@@ -46,8 +53,7 @@ const ARTIST_COPY = {
       '你是不是想偷蹭別人背好的啊？演唱會要開始了欸(‘⊙д-)',
       '我看你是根本沒有背吧ヽ(#`Д´)ﾉ'
     ],
-    resultReview:
-      '演唱會要開始了，趕快再來複習一下： <a href="https://www.youtube.com/watch?v=yZMmpkZVdug" target="_blank" rel="noopener noreferrer">TWICE THIS IS FOR 應援空耳合集</a>'
+    resultReview: '演唱會要開始了，趕快再來複習一下：'
   },
   twice: {
     rating: [
@@ -57,8 +63,7 @@ const ARTIST_COPY = {
       '你是不是想偷蹭別人背好的啊？演唱會要開始了欸(‘⊙д-)',
       '我看你是根本沒有背吧ヽ(#`Д´)ﾉ'
     ],
-    resultReview:
-      '演唱會要開始了，趕快再來複習一下： <a href="https://www.youtube.com/watch?v=yZMmpkZVdug" target="_blank" rel="noopener noreferrer">TWICE THIS IS FOR 應援空耳合集</a>'
+    resultReview: '演唱會要開始了，趕快再來複習一下：'
   }
 };
 
@@ -828,11 +833,18 @@ class PracticeController {
   }
 
   bindEvents() {
-    bindTrackedClick(this.startButton, 'practice_start', () => this.startPractice());
+    if (this.startButton) {
+      this.startButton.addEventListener('click', () => {
+        trackClick('start_button');
+        const artistEvent = this.buildStartEventName();
+        if (artistEvent) trackClick(artistEvent);
+        this.startPractice();
+      });
+    }
     this.artistSelect?.addEventListener('change', () => this.handleArtistChange());
     this.songSelect?.addEventListener('change', () => this.handleSongSelectionChange());
     bindTrackedClick(this.cheerButton, 'cheer_button', () => this.armCheerInput());
-    bindTrackedClick(this.submitBtn, 'practice_submit', () => this.finishPractice());
+    bindTrackedClick(this.submitBtn, 'send_button', () => this.finishPractice());
     this.cheerInput.addEventListener('keydown', (event) => this.handleCheerKeyDown(event));
     this.cheerInput.addEventListener('input', () => this.handleCheerInput());
     bindTrackedClick(this.commitButton, 'cheer_commit', () => {
@@ -848,11 +860,11 @@ class PracticeController {
     });
     bindTrackedClick(this.guideConfirmBtn, 'guide_confirm', () => this.confirmGuide());
     this.challengerInput?.addEventListener('input', () => this.handleChallengerInput());
-    bindTrackedClick(this.confirmOkBtn, 'confirm_end_practice', () => this.resolveConfirmDialog(true));
+    bindTrackedClick(this.confirmOkBtn, 'end_button', () => this.resolveConfirmDialog(true));
     bindTrackedClick(this.confirmCancelBtn, 'confirm_cancel_end', () => this.handleCancelResult());
     bindTrackedClick(this.nameWarningOkBtn, 'name_warning_ack', () => this.hideNameWarning());
     bindTrackedClick(this.mobileCountdownBtn, 'mobile_countdown_start', () => this.handleMobileCountdownStart());
-    bindTrackedClick(this.feedbackSubmitBtn, 'feedback_submit', () => this.submitFeedback());
+    bindTrackedClick(this.feedbackSubmitBtn, 'message_button', () => this.submitFeedback());
     this.presetButtons?.addEventListener('click', (event) => {
       const target = event.target;
       if (!(target instanceof HTMLButtonElement)) return;
@@ -860,8 +872,8 @@ class PracticeController {
       trackClick('preset_button_click');
       this.handlePresetClick(text);
     });
-    bindTrackedClick(this.nextSongBtn, 'next_song', () => this.goToNextSong());
-    bindTrackedClick(this.backToSelectBtn, 'back_to_select', () => this.resetToSongSelect());
+    bindTrackedClick(this.nextSongBtn, 'next_button', () => this.goToNextSong());
+    bindTrackedClick(this.backToSelectBtn, 'back_button', () => this.resetToSongSelect());
   }
 
   bindShortcuts() {
@@ -888,6 +900,12 @@ class PracticeController {
   updateStartButtonState() {
     const hasSong = Boolean(this.songSelect?.value);
     this.startButton.disabled = !hasSong;
+  }
+
+  buildStartEventName() {
+    const artist = this.artistSelect?.value || '';
+    const normalized = normalizeTrackToken(artist);
+    return normalized ? `start_${normalized}_button` : '';
   }
 
   updateInfoNote(artist, song = null) {
@@ -932,6 +950,8 @@ class PracticeController {
     const songId = this.songSelect.value;
     this.updateStartButtonState();
     const song = SongStore.findSong(songId);
+    // 選歌階段不應自動播放，先確保暫停。
+    this.player.stop();
     if (!song) {
       this.titleEl.textContent = '尚未選擇歌曲';
       this.player.stop();
@@ -952,6 +972,7 @@ class PracticeController {
     this.renderPresetButtons(song.defaultButtons || []);
     try {
       await this.cuePracticeVideo(song);
+      this.player.pause();
     } catch {
       /* already toasted */
     }
@@ -1647,11 +1668,12 @@ class PracticeController {
     const mistakes = Math.max(0, evaluation.mistakes ?? evaluation.expectedCount - evaluation.textMatches + evaluation.extras);
     const artistCopy = getArtistCopy(session.song?.artist);
     const rating = describeAccuracy(evaluation.score, artistCopy);
+    const resultReview = buildResultReview(session.song, artistCopy);
     this.resultEl.innerHTML = `
     <div class="result-summary">${evaluation.textMatches}/${evaluation.expectedCount} 句命中，錯誤 ${mistakes} 句（含多寫 ${evaluation.extras} 句）</div>
       <div class="result-score">正確率 ${evaluation.score}%</div>
       <div class="result-rating">${rating}</div>
-      <div class="result-review">${artistCopy.resultReview}</div>
+      <div class="result-review">${resultReview}</div>
     `;
 
     const rankingEntry = {
@@ -2144,6 +2166,18 @@ function normalizeText(text) {
     .toLowerCase()
     .replace(/[^\w\u4e00-\u9fff]+/g, '')
     .trim();
+}
+
+function buildResultReview(song, artistCopy = ARTIST_COPY.default) {
+  const prefix = artistCopy?.resultReview || '演唱會要開始了，趕快再來複習一下：';
+  const href = song?.cheerVideo?.trim() || song?.plainVideo?.trim();
+  if (!href) return prefix;
+  const title =
+    song?.videoTitle?.trim() ||
+    [song?.artist, song?.title].filter(Boolean).join(' - ') ||
+    '應援影片';
+  const link = `<a href="${href}" target="_blank" rel="noopener noreferrer">${title}</a>`;
+  return `${prefix} ${link}`;
 }
 
 function parseTime(value = '0:00') {
